@@ -139,12 +139,18 @@ def HLO_Fp32Or64Tensor : TensorOf<[HLO_Float32Or64]>;
 // Per tensor quantized integer tensor types
 def HLO_QuantizedIntTensor : TensorOf<[HLO_QuantizedInt]>;
 
-// Per Axis quantized integer tensor type
+// Per axis quantized integer tensor type
 def HLO_QuantizedPerAxisIntTensor : TensorOf<[HLO_QuantizedPerAxisInt]>;
+
+// Per tensor or per axis quantized integer tensor type
+def HLO_QuantizedOrPerAxisIntTensor : TensorOf<[HLO_QuantizedInt, HLO_QuantizedPerAxisInt]>;
 
 def HLO_PredTensor : TensorOf<[HLO_Pred]>;
 
-def HLO_Tensor : TensorOf<[HLO_Float, HLO_Pred, HLO_Int, HLO_Complex, HLO_QuantizedInt, HLO_QuantizedPerAxisInt]>;
+def HLO_Tensor : TensorOf<[HLO_Float, HLO_Pred, HLO_Int, HLO_Complex, HLO_QuantizedInt/*, HLO_QuantizedPerAxisInt*/]>;
+
+def HLO_TensorOrPerAxisQuantized : TensorOf<[HLO_Float, HLO_Pred, HLO_Int, HLO_Complex, HLO_QuantizedInt, HLO_QuantizedPerAxisInt]>;
+
 
 // TODO: delete this type once ranked tensors are the default
 def HLO_RankedTensor : RankedTensorOf<[HLO_Float, HLO_Pred, HLO_Int, HLO_Complex, HLO_QuantizedInt/*, HLO_QuantizedPerAxisInt*/]>;
