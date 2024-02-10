@@ -1024,7 +1024,7 @@ def StableHLO_OutfeedOp : StableHLO_Op<"outfeed",
   }];
 
   let arguments = (ins
-    Variadic<HLO_Tensor>:$inputs, /*outfeed_i1*/
+    Variadic<HLO_TensorOrPerAxisQuantized>:$inputs, /*outfeed_i1*/
     HLO_Token:$token, /*outfeed_i2*/
     DefaultValuedStrAttr<StrAttr, "">:$outfeed_config /*outfeed_i3*/
   );
@@ -1050,7 +1050,7 @@ def StableHLO_SendOp : StableHLO_Op<"send",
   }];
 
   let arguments = (ins
-    Variadic<HLO_Tensor>:$inputs, /*send_i1*/
+    Variadic<HLO_TensorOrPerAxisQuantized>:$inputs, /*send_i1*/
     HLO_Token:$token, /*send_i2*/
     StableHLO_ChannelHandle:$channel_handle, /*send_i3_i4*/
     DefaultValuedOptionalAttr<BoolAttr, "false">:$is_host_transfer /*send_i5*/
@@ -1811,8 +1811,8 @@ def StableHLO_BitcastConvertOp : StableHLO_ShapedInterfaceOp<"bitcast_convert",
     ```
   }];
 
-  let arguments = (ins HLO_Tensor:$operand /*bitcast_convert_i1*/);
-  let results = (outs HLO_Tensor);
+  let arguments = (ins HLO_TensorOrPerAxisQuantized:$operand /*bitcast_convert_i1*/);
+  let results = (outs HLO_TensorOrPerAxisQuantized);
   let hasVerifier = 1;
 
   let assemblyFormat = "operands attr-dict `:` functional-type(operands, results)";
@@ -1862,7 +1862,7 @@ def StableHLO_BroadcastInDimOp : StableHLO_Op<"broadcast_in_dim",
     ```
   }];
   let arguments = (ins
-    HLO_Tensor:$operand /*broadcast_in_dim_i1*/,
+    HLO_TensorOrPerAxisQuantized:$operand /*broadcast_in_dim_i1*/,
     DenseI64ArrayAttr:$broadcast_dimensions /*broadcast_in_dim_i2*/
   );
 
@@ -2109,11 +2109,11 @@ def StableHLO_ConvolutionOp : StableHLO_Op<"convolution", [Pure]> {
   }];
   let arguments = !con(
     (ins
-       HLO_Tensor:$lhs,
-       HLO_Tensor:$rhs),
+       HLO_TensorOrPerAxisQuantized:$lhs,
+       HLO_TensorOrPerAxisQuantized:$rhs),
     StableHLO_ConvolutionAttributes.attributes);
 
-  let results = (outs HLO_Tensor);
+  let results = (outs HLO_TensorOrPerAxisQuantized);
   let hasVerifier = 1;
 
   let extraClassDeclaration = [{
@@ -2223,12 +2223,13 @@ def StableHLO_DotOp: StableHLO_Op<"dot", [Pure]> {
     %0 = stablehlo.dot %arg0, %arg1 : (tensor<1x2xi32>, tensor<2x1xi32>) -> tensor<1x1xi32>
     ```
   }];
+  // Abhi: Spec does not say OP allow per Axis quantization
   let arguments = (
-    ins HLO_Tensor:$lhs,
-    HLO_Tensor:$rhs,
+    ins HLO_TensorOrPerAxisQuantized:$lhs,
+    HLO_TensorOrPerAxisQuantized:$rhs,
     StableHLO_PrecisionConfigAttr:$precision_config
   );
-  let results = (outs HLO_Tensor);
+  let results = (outs HLO_TensorOrPerAxisQuantized);
   let hasVerifier = 1;
 
   // Use empty `` to prevent extra whitespace before precision config.
@@ -2469,7 +2470,7 @@ def StableHLO_ReshapeOp: StableHLO_Op<"reshape",
     ```
   }];
 
-  let arguments = (ins HLO_Tensor:$operand);
+  let arguments = (ins HLO_TensorOrPerAxisQuantized:$operand);
 
   let results = (outs HLO_StaticShapeTensorOrPerAxisTensor);
   let hasVerifier = 1;
@@ -2800,10 +2801,10 @@ def StableHLO_TransposeOp: StableHLO_ShapedInterfaceOp<"transpose",
     ```
   }];
   let arguments = (ins
-    HLO_Tensor:$operand,
+    HLO_TensorOrPerAxisQuantized:$operand,
     DenseI64ArrayAttr:$permutation
   );
-  let results = (outs HLO_Tensor);
+  let results = (outs HLO_TensorOrPerAxisQuantized);
 
   let assemblyFormat = [{
     $operand `,` `dims` `=` $permutation
@@ -3087,7 +3088,7 @@ def StableHLO_RngBitGeneratorOp : StableHLO_Op<"rng_bit_generator", [Pure]> {
 
 // TODO(b/230662142): Implement unknown scales/zero_point cases.
 def StableHLO_UniformQuantizeOp : StableHLO_UnaryElementwiseOp<"uniform_quantize",
-      [Pure], TensorOf<[HLO_Float, HLO_QuantizedInt]> /*uniform_quantize_i1*/,
+      [Pure], TensorOf<[HLO_Float, HLO_QuantizedInt, HLO_QuantizedPerAxisInt]> /*uniform_quantize_i1*/,
       HLO_QuantizedIntTensor> { /*uniform_quantize_c1*/
   let summary = "UniformQuantize operation";
   let description = [{
@@ -3106,7 +3107,7 @@ def StableHLO_UniformQuantizeOp : StableHLO_UnaryElementwiseOp<"uniform_quantize
 }
 
 def StableHLO_UniformDequantizeOp : StableHLO_UnaryElementwiseOp<"uniform_dequantize",
-      [InferTensorType, Pure], HLO_QuantizedIntTensor /*uniform_dequantize_i1*/,
+      [InferTensorType, Pure], TensorOf<[HLO_QuantizedInt, HLO_QuantizedPerAxisInt]> /*uniform_dequantize_i1*/,
       HLO_FpTensor> { /*uniform_dequantize_c1, uniform_dequantize_c2*/
   let summary = "UniformDequantize operation";
   let description = [{
