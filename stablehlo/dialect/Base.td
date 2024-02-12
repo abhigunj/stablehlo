@@ -100,12 +100,12 @@ class StableHLO_UniformQuantizedUnsignedIntOfWidths<list<int> widths> :
 
 class StableHLO_UniformQuantizedPerAxisSignedIntOfWidths<list<int> widths> :
     AnyTypeOf<!foreach(w, widths, StableHLO_UniformQuantizedPerAxisSignedInt<w>),
-              !interleave(widths, "/") # "-bit uniform quantized signed " #
+              !interleave(widths, "/") # "-bit uniform quantized per axis signed " #
               "integer">;
 
 class StableHLO_UniformQuantizedPerAxisUnsignedIntOfWidths<list<int> widths> :
     AnyTypeOf<!foreach(w, widths, StableHLO_UniformQuantizedPerAxisUnsignedInt<w>),
-              !interleave(widths, "/") # "-bit uniform quantized unsigned " #
+              !interleave(widths, "/") # "-bit uniform quantized per axis unsigned " #
               "integer">;
 
 // Integer-based uniform per tensor quantized types. The definitions can be used to specify
