@@ -230,7 +230,7 @@ def StableHLO_CbrtOp: StableHLO_UnaryElementwiseOp<"cbrt",
 }
 
 def StableHLO_CeilOp: StableHLO_UnaryElementwiseOp<"ceil",
-    [Pure, HLO_CompatibleOperandsAndResultType], HLO_FpOrQuantizedIntTensor> {
+    [Pure, HLO_CompatibleOperandsAndResultType], TensorOf<[HLO_Float, HLO_QuantizedInt]>> {
   let summary = "Ceil operation";
   let description = [{
     Performs element-wise ceil of `operand` tensor and produces a `result` tensor.
