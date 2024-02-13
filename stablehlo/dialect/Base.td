@@ -182,6 +182,9 @@ def HLO_PredOrIntTensor : TensorOf<[HLO_Pred, HLO_Int]>;
 // Any floating-point or complex tensor types
 def HLO_FpOrComplexTensor : TensorOf<[HLO_Float, HLO_Complex]>;
 
+// Any floating-point or quantized tensor types
+def HLO_FpOrQuantizedIntTensor : TensorOf<[HLO_Float, HLO_QuantizedInt]>;
+
 // Any floating-point, complex or quantized tensor types
 def HLO_FpComplexOrQuantizedIntTensor : TensorOf<[HLO_Float, HLO_Complex, HLO_QuantizedInt]>;
 
