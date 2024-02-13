@@ -230,7 +230,7 @@ def StableHLO_CbrtOp: StableHLO_UnaryElementwiseOp<"cbrt",
 }
 
 def StableHLO_CeilOp: StableHLO_UnaryElementwiseOp<"ceil",
-    [Pure, HLO_CompatibleOperandsAndResultType], HLO_FpTensor> {
+    [Pure, HLO_CompatibleOperandsAndResultType], TensorOf<[HLO_Float, HLO_QuantizedInt]>> {
   let summary = "Ceil operation";
   let description = [{
     Performs element-wise ceil of `operand` tensor and produces a `result` tensor.
@@ -336,7 +336,7 @@ def StableHLO_Expm1Op: StableHLO_UnaryElementwiseOp<"exponential_minus_one",
 }
 
 def StableHLO_FloorOp: StableHLO_UnaryElementwiseOp<"floor",
-    [Pure, HLO_CompatibleOperandsAndResultType], HLO_FpTensor> {
+    [Pure, HLO_CompatibleOperandsAndResultType], HLO_FpOrQuantizedIntTensor> {
   let summary = "Floor operation";
   let description = [{
     Performs element-wise floor of `operand` tensor and produces a `result`
@@ -386,7 +386,7 @@ def StableHLO_IsFiniteOp: StableHLO_UnaryElementwiseOp<"is_finite", [Pure,
     %y = stablehlo.is_finite %x : (tensor<7xf64>) -> tensor<7xi1>
     ```
   }];
-  let arguments = (ins HLO_FpTensor:$x); /*is_finite_i1*/
+  let arguments = (ins HLO_FpOrQuantizedIntTensor:$x); /*is_finite_i1*/
   let results = (outs HLO_PredTensor:$y);
 
   let assemblyFormat = [{
@@ -1708,19 +1708,19 @@ def StableHLO_BatchNormGradOp : StableHLO_Op<"batch_norm_grad", [Pure,
   }];
 
   let arguments = (ins
-    RankedTensorOf<[HLO_Float]>:$operand, /*batch_norm_grad_i1*/
-    1DTensorOf<[HLO_Float]>:$scale, /*batch_norm_grad_i2*/
-    1DTensorOf<[HLO_Float]>:$mean, /*batch_norm_grad_i3*/
-    1DTensorOf<[HLO_Float]>:$variance, /*batch_norm_grad_i4*/
-    RankedTensorOf<[HLO_Float]>:$grad_output, /*batch_norm_grad_i5*/
+    RankedTensorOf<[HLO_Float, HLO_QuantizedInt]>:$operand, /*batch_norm_grad_i1*/
+    1DTensorOf<[HLO_Float, HLO_QuantizedInt]>:$scale, /*batch_norm_grad_i2*/
+    1DTensorOf<[HLO_Float, HLO_QuantizedInt]>:$mean, /*batch_norm_grad_i3*/
+    1DTensorOf<[HLO_Float, HLO_QuantizedInt]>:$variance, /*batch_norm_grad_i4*/
+    RankedTensorOf<[HLO_Float, HLO_QuantizedInt]>:$grad_output, /*batch_norm_grad_i5*/
     F32Attr:$epsilon, /*batch_norm_grad_i6*/
     I64Attr:$feature_index /*batch_norm_grad_i7*/
   );
 
   let results = (outs
-      RankedTensorOf<[HLO_Float]>:$grad_operand,
-      1DTensorOf<[HLO_Float]>:$grad_scale,
-      1DTensorOf<[HLO_Float]>:$grad_offset);
+      RankedTensorOf<[HLO_Float, HLO_QuantizedInt]>:$grad_operand,
+      1DTensorOf<[HLO_Float, HLO_QuantizedInt]>:$grad_scale,
+      1DTensorOf<[HLO_Float, HLO_QuantizedInt]>:$grad_offset);
 }
 
 def StableHLO_BatchNormInferenceOp : StableHLO_Op<"batch_norm_inference",
@@ -1745,16 +1745,16 @@ def StableHLO_BatchNormInferenceOp : StableHLO_Op<"batch_norm_inference",
   }];
 
   let arguments = (ins
-    RankedTensorOf<[HLO_Float]>:$operand /*batch_norm_inference_i1*/,
-    1DTensorOf<[HLO_Float]>:$scale /*batch_norm_inference_i2*/,
-    1DTensorOf<[HLO_Float]>:$offset /*batch_norm_inference_i3*/,
-    1DTensorOf<[HLO_Float]>:$mean /*batch_norm_inference_i4*/,
-    1DTensorOf<[HLO_Float]>:$variance /*batch_norm_inference_i5*/,
+    RankedTensorOf<[HLO_Float, HLO_QuantizedInt]>:$operand /*batch_norm_inference_i1*/,
+    1DTensorOf<[HLO_Float, HLO_QuantizedInt]>:$scale /*batch_norm_inference_i2*/,
+    1DTensorOf<[HLO_Float, HLO_QuantizedInt]>:$offset /*batch_norm_inference_i3*/,
+    1DTensorOf<[HLO_Float, HLO_QuantizedInt]>:$mean /*batch_norm_inference_i4*/,
+    1DTensorOf<[HLO_Float, HLO_QuantizedInt]>:$variance /*batch_norm_inference_i5*/,
     F32Attr:$epsilon /*batch_norm_inference_i6*/,
     I64Attr:$feature_index /*batch_norm_inference_i7*/
   );
 
-  let results = (outs RankedTensorOf<[HLO_Float]>:$result);
+  let results = (outs RankedTensorOf<[HLO_Float, HLO_QuantizedInt]>:$result);
 }
 
 def StableHLO_BatchNormTrainingOp : StableHLO_Op<"batch_norm_training",
@@ -1781,17 +1781,17 @@ def StableHLO_BatchNormTrainingOp : StableHLO_Op<"batch_norm_training",
   }];
 
   let arguments = (ins
-    RankedTensorOf<[HLO_Float]>:$operand /*batch_norm_training_i1*/,
-    1DTensorOf<[HLO_Float]>:$scale /*batch_norm_training_i2*/,
-    1DTensorOf<[HLO_Float]>:$offset /*batch_norm_training_i3*/,
+    RankedTensorOf<[HLO_Float, HLO_QuantizedInt]>:$operand /*batch_norm_training_i1*/,
+    1DTensorOf<[HLO_Float, HLO_QuantizedInt]>:$scale /*batch_norm_training_i2*/,
+    1DTensorOf<[HLO_Float, HLO_QuantizedInt]>:$offset /*batch_norm_training_i3*/,
     F32Attr:$epsilon /*batch_norm_training_i4*/,
     I64Attr:$feature_index /*batch_norm_training_i5*/
   );
 
   let results = (outs
-      RankedTensorOf<[HLO_Float]>:$output,
-      1DTensorOf<[HLO_Float]>:$batch_mean,
-      1DTensorOf<[HLO_Float]>:$batch_var);
+      RankedTensorOf<[HLO_Float, HLO_QuantizedInt]>:$output,
+      1DTensorOf<[HLO_Float, HLO_QuantizedInt]>:$batch_mean,
+      1DTensorOf<[HLO_Float, HLO_QuantizedInt]>:$batch_var);
 }
 
 def StableHLO_BitcastConvertOp : StableHLO_ShapedInterfaceOp<"bitcast_convert",
@@ -1941,11 +1941,11 @@ def StableHLO_CholeskyOp : StableHLO_Op<"cholesky",
     ```
   }];
   let arguments = (ins
-    HLO_FpOrComplexTensor:$a,
+    HLO_FpComplexOrQuantizedIntTensor:$a,
     DefaultValuedOptionalAttr<BoolAttr, "false">:$lower
   );
 
-  let results = (outs HLO_FpOrComplexTensor:$result);
+  let results = (outs HLO_FpComplexOrQuantizedIntTensor:$result);
 
   let assemblyFormat = [{
     $a (`,` `lower` `=` $lower^)? attr-dict `:` custom<SameOperandsAndResultType>(type($a), type($result))
