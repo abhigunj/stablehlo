@@ -230,7 +230,7 @@ def StableHLO_CbrtOp: StableHLO_UnaryElementwiseOp<"cbrt",
 }
 
 def StableHLO_CeilOp: StableHLO_UnaryElementwiseOp<"ceil",
-    [Pure, HLO_CompatibleOperandsAndResultType], TensorOf<[HLO_Float, HLO_QuantizedInt]>> {
+    [Pure, HLO_CompatibleOperandsAndResultType], HLO_FpOrQuantizedIntTensor> {
   let summary = "Ceil operation";
   let description = [{
     Performs element-wise ceil of `operand` tensor and produces a `result` tensor.
@@ -1866,7 +1866,7 @@ def StableHLO_BroadcastInDimOp : StableHLO_Op<"broadcast_in_dim",
     DenseI64ArrayAttr:$broadcast_dimensions /*broadcast_in_dim_i2*/
   );
 
-  let results = (outs HLO_StaticShapeTensorOrPerAxisTensor);
+  let results = (outs HLO_StaticShapeOrQuantizedPerAxis);
 
   let hasVerifier = 1;
 
@@ -2223,9 +2223,8 @@ def StableHLO_DotOp: StableHLO_Op<"dot", [Pure]> {
     %0 = stablehlo.dot %arg0, %arg1 : (tensor<1x2xi32>, tensor<2x1xi32>) -> tensor<1x1xi32>
     ```
   }];
-  // Abhi: Spec does not say OP allow per Axis quantization
   let arguments = (
-    ins HLO_TensorOrPerAxisQuantized:$lhs,
+    ins HLO_Tensor:$lhs,
     HLO_TensorOrPerAxisQuantized:$rhs,
     StableHLO_PrecisionConfigAttr:$precision_config
   );
@@ -2259,12 +2258,12 @@ def StableHLO_DotGeneralOp: StableHLO_ShapedInterfaceOp<"dot_general", [Pure]> {
   }];
   let arguments = (ins
     HLO_Tensor:$lhs /*dot_general_i1*/,
-    HLO_Tensor:$rhs /*dot_general_i2*/,
+    HLO_TensorOrPerAxisQuantized:$rhs /*dot_general_i2*/,
     StableHLO_DotDimensionNumbers:$dot_dimension_numbers /*dot_general_i3, dot_general_i4, dot_general_i5, dot_general_i6*/,
     StableHLO_PrecisionConfigAttr:$precision_config /*dot_general_i7*/
   );
 
-  let results = (outs HLO_Tensor);
+  let results = (outs HLO_TensorOrPerAxisQuantized);
   let hasVerifier = 1;
 
   // Use empty `` to prevent extra whitespace before precision config.
@@ -2472,7 +2471,7 @@ def StableHLO_ReshapeOp: StableHLO_Op<"reshape",
 
   let arguments = (ins HLO_TensorOrPerAxisQuantized:$operand);
 
-  let results = (outs HLO_StaticShapeTensorOrPerAxisTensor);
+  let results = (outs HLO_StaticShapeOrQuantizedPerAxis);
   let hasVerifier = 1;
 
   let assemblyFormat = "operands attr-dict `:` functional-type(operands, results)";
@@ -3088,8 +3087,8 @@ def StableHLO_RngBitGeneratorOp : StableHLO_Op<"rng_bit_generator", [Pure]> {
 
 // TODO(b/230662142): Implement unknown scales/zero_point cases.
 def StableHLO_UniformQuantizeOp : StableHLO_UnaryElementwiseOp<"uniform_quantize",
-      [Pure], TensorOf<[HLO_Float, HLO_QuantizedInt, HLO_QuantizedPerAxisInt]> /*uniform_quantize_i1*/,
-      TensorOf<[HLO_QuantizedInt, HLO_QuantizedPerAxisInt]>> { /*uniform_quantize_c1*/
+      [Pure], TensorOf<[HLO_Float, HLO_QuantizedInt, HLO_PerAxisQuantizedInt]> /*uniform_quantize_i1*/,
+      TensorOf<[HLO_QuantizedInt, HLO_PerAxisQuantizedInt]>> { /*uniform_quantize_c1*/
   let summary = "UniformQuantize operation";
   let description = [{
     Performs element-wise conversion of floating-point tensor or quantized
@@ -3107,7 +3106,7 @@ def StableHLO_UniformQuantizeOp : StableHLO_UnaryElementwiseOp<"uniform_quantize
 }
 
 def StableHLO_UniformDequantizeOp : StableHLO_UnaryElementwiseOp<"uniform_dequantize",
-      [InferTensorType, Pure], TensorOf<[HLO_QuantizedInt, HLO_QuantizedPerAxisInt]> /*uniform_dequantize_i1*/,
+      [InferTensorType, Pure], TensorOf<[HLO_QuantizedInt, HLO_PerAxisQuantizedInt]> /*uniform_dequantize_i1*/,
       HLO_FpTensor> { /*uniform_dequantize_c1, uniform_dequantize_c2*/
   let summary = "UniformDequantize operation";
   let description = [{
