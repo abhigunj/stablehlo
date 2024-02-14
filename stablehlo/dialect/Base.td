@@ -117,10 +117,10 @@ def HLO_QuantizedInt :
 
 // Integer-based uniform per axis quantized types. The definitions can be used to specify
 // operand's tensor types.
-def HLO_QuantizedPerAxisSignedInt : StableHLO_UniformQuantizedPerAxisSignedIntOfWidths<[4, 8, 16, 32]>;
-def HLO_QuantizedPerAxisUnsignedInt : StableHLO_UniformQuantizedPerAxisUnsignedIntOfWidths<[4, 8, 16, 32]>;
-def HLO_QuantizedPerAxisInt :
-    AnyTypeOf<[HLO_QuantizedPerAxisSignedInt, HLO_QuantizedPerAxisUnsignedInt]>;
+def HLO_PerAxisQuantizedSignedInt : StableHLO_UniformQuantizedPerAxisSignedIntOfWidths<[4, 8, 16, 32]>;
+def HLO_PerAxisQuantizedUnsignedInt : StableHLO_UniformQuantizedPerAxisUnsignedIntOfWidths<[4, 8, 16, 32]>;
+def HLO_PerAxisQuantizedInt :
+    AnyTypeOf<[HLO_PerAxisQuantizedSignedInt, HLO_PerAxisQuantizedUnsignedInt]>;
 
 // Token type.
 def HLO_Token : Type<CPred<"$_self.isa<TokenType>()">, "token">;
@@ -141,17 +141,16 @@ def HLO_Fp32Or64Tensor : TensorOf<[HLO_Float32Or64]>;
 def HLO_QuantizedIntTensor : TensorOf<[HLO_QuantizedInt]>;
 
 // Per axis quantized integer tensor type
-def HLO_QuantizedPerAxisIntTensor : TensorOf<[HLO_QuantizedPerAxisInt]>;
+def HLO_PerAxisQuantizedIntTensor : TensorOf<[HLO_PerAxisQuantizedInt]>;
 
 // Per tensor or per axis quantized integer tensor type
-def HLO_QuantizedOrPerAxisIntTensor : TensorOf<[HLO_QuantizedInt, HLO_QuantizedPerAxisInt]>;
+def HLO_QuantizedOrPerAxisIntTensor : TensorOf<[HLO_QuantizedInt, HLO_PerAxisQuantizedInt]>;
 
 def HLO_PredTensor : TensorOf<[HLO_Pred]>;
 
 def HLO_Tensor : TensorOf<[HLO_Float, HLO_Pred, HLO_Int, HLO_Complex, HLO_QuantizedInt]>;
 
-def HLO_TensorOrPerAxisQuantized : TensorOf<[HLO_Float, HLO_Pred, HLO_Int, HLO_Complex, HLO_QuantizedInt, HLO_QuantizedPerAxisInt]>;
-
+def HLO_TensorOrPerAxisQuantized : TensorOf<[HLO_Float, HLO_Pred, HLO_Int, HLO_Complex, HLO_QuantizedInt, HLO_PerAxisQuantizedInt]>;
 
 // TODO: delete this type once ranked tensors are the default
 def HLO_RankedTensor : RankedTensorOf<[HLO_Float, HLO_Pred, HLO_Int, HLO_Complex, HLO_QuantizedInt]>;
@@ -214,8 +213,8 @@ def HLO_StaticShapeTensor : StaticShapeTensorOf<[
       HLO_Float, HLO_Pred, HLO_Int, HLO_Complex, HLO_QuantizedInt]>;
 
 // To address broadcast_in_dimm, reshape OP test failures
-def HLO_StaticShapeTensorOrPerAxisTensor : StaticShapeTensorOf<[
-      HLO_Float, HLO_Pred, HLO_Int, HLO_Complex, HLO_QuantizedInt, HLO_QuantizedPerAxisInt]>;
+def HLO_StaticShapeOrQuantizedPerAxis : StaticShapeTensorOf<[
+      HLO_Float, HLO_Pred, HLO_Int, HLO_Complex, HLO_QuantizedInt, HLO_PerAxisQuantizedInt]>;
 
 def HLO_StaticShapeTensorOrToken : AnyTypeOf<[HLO_StaticShapeTensor, HLO_Token]>;
 
