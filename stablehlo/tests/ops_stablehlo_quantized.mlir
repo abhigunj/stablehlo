@@ -1,11 +1,11 @@
 // RUN: stablehlo-opt %s -verify-diagnostics -split-input-file -allow-unregistered-dialect | FileCheck %s
 
-// CHECK-LABEL: func private @token_type() -> !stablehlo.token
-func.func private @token_type() -> !stablehlo.token
+// Tests for StableHLO OPs supporting Quantization
 
 // -----
+// Tests for StableHLO OPs supporting PerAxisQuantizedTensors
 
-// OPs supporting PerAxis Quantization
+// CHECK-LABEL: @per_axis_quantized_ops
 func.func @per_axis_quantized_ops(
   %arg0: tensor<1x2x2x!quant.uniform<i8<-128:127>:f32:2, {0.1:-30, 0.5:-20}>>,
   %arg1: tensor<1x2x2x!quant.uniform<i8<-128:127>:f32:0, {0.1:-30}>>,
@@ -22,9 +22,22 @@ func.func @per_axis_quantized_ops(
   func.return
 }
 
-// -----
+// %arg1 can be a PerAxis Quantized
+func.func @dot_general_quantization(%arg0: tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, %arg1: tensor<2x3x5x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<2x4x5x!quant.uniform<i8:f32:0, {0.1:-30}>> {
+  %0 = "stablehlo.dot_general"(%arg0, %arg1) {
+    dot_dimension_numbers = #stablehlo.dot<
+      lhs_batching_dimensions = [0],
+      rhs_batching_dimensions = [0],
+      lhs_contracting_dimensions = [1],
+      rhs_contracting_dimensions = [1]
+    >
+  } : (tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, tensor<2x3x5x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<2x4x5x!quant.uniform<i8:f32:0, {0.1:-30}>>
+  func.return %0 : tensor<2x4x5x!quant.uniform<i8:f32:0, {0.1:-30}>>
+}
 
-// OPs supporting PerTensor Quantization
+// -----
+// Tests for StableHLO OPs supporting PerTensorQuantizedTensors
+
 func.func @quantization_supported_ops(
   %arg0: tensor<1x2x2x!quant.uniform<i8:f32, 1.0:17>>,
   %arg1: tensor<1x2x2x!quant.uniform<i8:f32, 1.0:17>>,
@@ -117,8 +130,6 @@ func.func @dynamic_slice_quantization(%arg0: tensor<3x4x!quant.uniform<i8:f32, 1
   func.return %0 : tensor<1x4x!quant.uniform<i8:f32, 1.0:17>>
 }
 
-// -----
-
 func.func @dynamic_update_slice_pertensor_quantization(%operand: tensor<3x4x!quant.uniform<i8:f32, 1.0:17>>, %update: tensor<1x4x!quant.uniform<i8:f32, 1.0:17>>, %start_indices0: tensor<i64>, %start_indices1: tensor<i64>) -> tensor<3x4x!quant.uniform<i8:f32, 1.0:17>> {
   %0 = "stablehlo.dynamic_update_slice"(%operand, %update, %start_indices0, %start_indices1) : (tensor<3x4x!quant.uniform<i8:f32, 1.0:17>>, tensor<1x4x!quant.uniform<i8:f32, 1.0:17>>, tensor<i64>, tensor<i64>) -> tensor<3x4x!quant.uniform<i8:f32, 1.0:17>>
   func.return %0 : tensor<3x4x!quant.uniform<i8:f32, 1.0:17>>
@@ -138,7 +149,7 @@ func.func @gather_quantization(%operand : tensor<*x!quant.uniform<i8:f32, 1.0:17
   func.return %res : tensor<8x?x7x1x6x1x?x!quant.uniform<i8:f32, 1.0:17>>
 }
 
-// Negative Tests for OPs supporting PerTensor Quantization
+// Negative Tests for StableHLO OPs supporting PerTensorQuantizedTensors but not PerAxisQuantizedTensors
 
 // -----
 
