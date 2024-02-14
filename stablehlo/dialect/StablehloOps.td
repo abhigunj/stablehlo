@@ -678,7 +678,8 @@ class StableHLO_BinaryElementwiseOp<string mnemonic, list<Trait> traits,
 }
 
 def StableHLO_AddOp : StableHLO_BinaryElementwiseOp<"add",
-      [HLO_Commutative, Pure, HLO_CompatibleOperandsAndResultType]> {
+      [HLO_Commutative, Pure, HLO_CompatibleOperandsAndResultType],
+      HLO_TensorOrPerAxisQuantized> {
   let summary = "Add operation";
   let description = [{
     Performs element-wise addition of two tensors `lhs` and `rhs` and produces a
