@@ -150,6 +150,8 @@ def HLO_PredTensor : TensorOf<[HLO_Pred]>;
 
 def HLO_Tensor : TensorOf<[HLO_Float, HLO_Pred, HLO_Int, HLO_Complex, HLO_QuantizedInt]>;
 
+def HLO_TensorNonQuantized : TensorOf<[HLO_Float, HLO_Pred, HLO_Int, HLO_Complex]>;
+
 def HLO_TensorOrPerAxisQuantized : TensorOf<[HLO_Float, HLO_Pred, HLO_Int, HLO_Complex, HLO_QuantizedInt, HLO_PerAxisQuantizedInt]>;
 
 // TODO: delete this type once ranked tensors are the default
