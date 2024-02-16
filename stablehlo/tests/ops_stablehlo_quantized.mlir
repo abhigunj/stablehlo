@@ -268,12 +268,12 @@ func.func @select_and_scatter_quantization(%arg0: tensor<10x24x24x64x!quant.unif
   func.return %0 : tensor<10x24x24x64x!quant.uniform<i8:f32, 1.0:17>>
 }
 
-func.func @slice(%arg0: tensor<3x4x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<1x2x!quant.uniform<i8:f32, 1.0:17>> {
+func.func @slice_qunatization(%arg0: tensor<3x4x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<1x2x!quant.uniform<i8:f32, 1.0:17>> {
   %0 = "stablehlo.slice"(%arg0) {start_indices = array<i64: 1, 0>, limit_indices = array<i64: 2, 4>, strides = array<i64: 1, 2>} : (tensor<3x4x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<1x2x!quant.uniform<i8:f32, 1.0:17>>
   func.return %0 : tensor<1x2x!quant.uniform<i8:f32, 1.0:17>>
 }
 
-func.func @sort(%input0: tensor<16x16x!quant.uniform<i8:f32, 1.0:17>>, %input1: tensor<16x16x!quant.uniform<i8:f32, 1.0:17>>) {
+func.func @sort_quantization(%input0: tensor<16x16x!quant.uniform<i8:f32, 1.0:17>>, %input1: tensor<16x16x!quant.uniform<i8:f32, 1.0:17>>) {
   %0:2 = "stablehlo.sort"(%input0, %input1) ({
   ^bb0(%arg0: tensor<!quant.uniform<i8:f32, 1.0:17>>, %arg1: tensor<!quant.uniform<i8:f32, 1.0:17>>, %arg2: tensor<!quant.uniform<i8:f32, 1.0:17>>, %arg3: tensor<!quant.uniform<i8:f32, 1.0:17>>):
     %7 = "stablehlo.compare"(%arg0, %arg1) {comparison_direction = #stablehlo<comparison_direction GT>} : (tensor<!quant.uniform<i8:f32, 1.0:17>>, tensor<!quant.uniform<i8:f32, 1.0:17>>) -> tensor<i1>
@@ -474,7 +474,7 @@ func.func @negative_map_quantization(%arg0: tensor<4x!quant.uniform<i8:f32:0, {0
     ^bb0(%arg2: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg3: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>):
     "stablehlo.return"(%arg2) : (tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>) -> ()
   }) {dimensions = array<i64: 0>} : (tensor<4x!quant.uniform<i8:f32:0, {0.1:-30}>>, tensor<4x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<4x!quant.uniform<i8:f32:0, {0.1:-30}>>
-  func.return %0 : tensor<4x!quant.uniform<i8:f32:0, {0.1:-30}>>
+  func.return %map : tensor<4x!quant.uniform<i8:f32:0, {0.1:-30}>>
 }
 
 // -----
@@ -760,7 +760,7 @@ func.func @negative_scatter_quantization(%arg0: tensor<200x100x300x!quant.unifor
 
 // -----
 
-func.func @select_quantization(%arg0: tensor<2x3xi1>, %arg1: tensor<2x3x!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg2: tensor<2x3x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<2x3x!quant.uniform<i8:f32:0, {0.1:-30}>> {
+func.func @negative_select_quantization(%arg0: tensor<2x3xi1>, %arg1: tensor<2x3x!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg2: tensor<2x3x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<2x3x!quant.uniform<i8:f32:0, {0.1:-30}>> {
   // expected-error@+1 {{operand #1 must be tensor of f8E4M3B11FNUZ type or f8E4M3FN type or f8E4M3FNUZ type or f8E5M2 type or f8E5M2FNUZ type or 16-bit float or 32-bit float or 64-bit float or bfloat16 type or pred (AKA boolean or 1-bit integer) or 4/8/16/32/64-bit signless integer or 4/8/16/32/64-bit unsigned integer or complex type with 32-bit float or 64-bit float elements or 4/8/16/32-bit uniform quantized signed integer or 4/8/16/32-bit uniform quantized unsigned integer values, but got 'tensor<2x3x!quant.uniform<i8:f32:0, {1.000000e-01:-30}>>'}}
   %0 = "stablehlo.select"(%arg0, %arg1, %arg2) : (tensor<2x3xi1>, tensor<2x3x!quant.uniform<i8:f32:0, {0.1:-30}>>, tensor<2x3x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<2x3x!quant.uniform<i8:f32:0, {0.1:-30}>>
   func.return %0 : tensor<2x3x!quant.uniform<i8:f32:0, {0.1:-30}>>
@@ -768,7 +768,7 @@ func.func @select_quantization(%arg0: tensor<2x3xi1>, %arg1: tensor<2x3x!quant.u
 
 // -----
 
-func.func @slice(%arg0: tensor<3x4x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<1x2x!quant.uniform<i8:f32:0, {0.1:-30}>> {
+func.func @negative_slice_quantization(%arg0: tensor<3x4x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<1x2x!quant.uniform<i8:f32:0, {0.1:-30}>> {
   // expected-error@+1 {{operand #0 must be tensor of f8E4M3B11FNUZ type or f8E4M3FN type or f8E4M3FNUZ type or f8E5M2 type or f8E5M2FNUZ type or 16-bit float or 32-bit float or 64-bit float or bfloat16 type or pred (AKA boolean or 1-bit integer) or 4/8/16/32/64-bit signless integer or 4/8/16/32/64-bit unsigned integer or complex type with 32-bit float or 64-bit float elements or 4/8/16/32-bit uniform quantized signed integer or 4/8/16/32-bit uniform quantized unsigned integer values, but got 'tensor<3x4x!quant.uniform<i8:f32:0, {1.000000e-01:-30}>>'}}
   %0 = "stablehlo.slice"(%arg0) {start_indices = array<i64: 1, 0>, limit_indices = array<i64: 2, 4>, strides = array<i64: 1, 2>} : (tensor<3x4x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<1x2x!quant.uniform<i8:f32:0, {0.1:-30}>>
   func.return %0 : tensor<1x2x!quant.uniform<i8:f32:0, {0.1:-30}>>
@@ -777,7 +777,7 @@ func.func @slice(%arg0: tensor<3x4x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tens
 // -----
 
 
-func.func @sort(%input0: tensor<16x16x!quant.uniform<i8:f32:0, {0.1:-30}>>, %input1: tensor<16x16x!quant.uniform<i8:f32:0, {0.1:-30}>>) {
+func.func @negative_sort_quantization(%input0: tensor<16x16x!quant.uniform<i8:f32:0, {0.1:-30}>>, %input1: tensor<16x16x!quant.uniform<i8:f32:0, {0.1:-30}>>) {
   // expected-error@+1 {{operand #0 must be variadic of tensor of f8E4M3B11FNUZ type or f8E4M3FN type or f8E4M3FNUZ type or f8E5M2 type or f8E5M2FNUZ type or 16-bit float or 32-bit float or 64-bit float or bfloat16 type or pred (AKA boolean or 1-bit integer) or 4/8/16/32/64-bit signless integer or 4/8/16/32/64-bit unsigned integer or complex type with 32-bit float or 64-bit float elements or 4/8/16/32-bit uniform quantized signed integer or 4/8/16/32-bit uniform quantized unsigned integer values, but got 'tensor<16x16x!quant.uniform<i8:f32:0, {1.000000e-01:-30}>>'}}
   %0:2 = "stablehlo.sort"(%input0, %input1) ({
   ^bb0(%arg0: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg1: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg2: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg3: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>):
@@ -805,7 +805,7 @@ func.func @negative_while_quantization(%arg0: tensor<4x!quant.uniform<i8:f32:0, 
 
 // -----
 
-func.func @select_and_scatter_quantization(%arg0: tensor<10x24x24x64x!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg1: tensor<10x23x23x64x!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg2: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<10x24x24x64x!quant.uniform<i8:f32:0, {0.1:-30}>> {
+func.func @negative_select_and_scatter_quantization(%arg0: tensor<10x24x24x64x!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg1: tensor<10x23x23x64x!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg2: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<10x24x24x64x!quant.uniform<i8:f32:0, {0.1:-30}>> {
   // expected-error@+1 {{operand #0 must be tensor of f8E4M3B11FNUZ type or f8E4M3FN type or f8E4M3FNUZ type or f8E5M2 type or f8E5M2FNUZ type or 16-bit float or 32-bit float or 64-bit float or bfloat16 type or pred (AKA boolean or 1-bit integer) or 4/8/16/32/64-bit signless integer or 4/8/16/32/64-bit unsigned integer or complex type with 32-bit float or 64-bit float elements or 4/8/16/32-bit uniform quantized signed integer or 4/8/16/32-bit uniform quantized unsigned integer values, but got 'tensor<10x24x24x64x!quant.uniform<i8:f32:0, {1.000000e-01:-30}>>'}}
   %0 = "stablehlo.select_and_scatter"(%arg0, %arg1, %arg2) ({
     ^bb0(%arg3: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg4: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>):
