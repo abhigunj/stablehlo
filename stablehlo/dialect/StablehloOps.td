@@ -520,7 +520,7 @@ def StableHLO_RealOp: StableHLO_UnaryElementwiseOp<"real",
 
 def StableHLO_RoundOp: StableHLO_UnaryElementwiseOp<"round_nearest_afz",
     [Pure, HLO_CompatibleOperandsAndResultType /*round_nearest_afz_c1*/],
-    HLO_FpTensor /*round_nearest_afz_i1*/> { /*round_nearest_afz_c1*/
+    HLO_FpOrQuantizedIntTensor /*round_nearest_afz_i1*/> { /*round_nearest_afz_c1*/
   let summary = "Round operation";
   let description = [{
     Performs element-wise rounding towards the nearest integer, breaking ties
@@ -538,7 +538,7 @@ def StableHLO_RoundOp: StableHLO_UnaryElementwiseOp<"round_nearest_afz",
 
 def StableHLO_RoundNearestEvenOp: StableHLO_UnaryElementwiseOp<"round_nearest_even",
     [Pure, HLO_CompatibleOperandsAndResultType /*round_nearest_even_c1*/],
-    HLO_FpTensor /*round_nearest_even_i1*/> { /*round_nearest_even_c1*/
+    HLO_FpOrQuantizedIntTensor /*round_nearest_even_i1*/> { /*round_nearest_even_c1*/
   let summary = "RoundNearestEven operation";
   let description = [{
     Performs element-wise rounding towards the nearest integer, breaking ties
@@ -3143,12 +3143,12 @@ def StableHLO_ReducePrecisionOp :
     ```
   }];
   let arguments = (ins
-    HLO_FpTensor:$operand, /*reduce_precision_i1*/
+    HLO_FpOrQuantizedIntTensor:$operand, /*reduce_precision_i1*/
     I32Attr:$exponent_bits, /*reduce_precision_i2*/
     I32Attr:$mantissa_bits /*reduce_precision_i3*/
   );
   let hasVerifier = 1;
-  let results = (outs HLO_FpTensor:$output);
+  let results = (outs HLO_FpOrQuantizedIntTensor:$output);
 
   let assemblyFormat = [{
     $operand `,` `format` `=` custom<ExponentMantissa>($exponent_bits, $mantissa_bits)

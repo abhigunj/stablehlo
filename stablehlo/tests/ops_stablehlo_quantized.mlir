@@ -149,6 +149,152 @@ func.func @gather_quantization(%operand : tensor<*x!quant.uniform<i8:f32, 1.0:17
   func.return %res : tensor<8x?x7x1x6x1x?x!quant.uniform<i8:f32, 1.0:17>>
 }
 
+func.func @map_quantization(%arg0: tensor<4x!quant.uniform<i8:f32, 1.0:17>>, %arg1: tensor<4x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<4x!quant.uniform<i8:f32, 1.0:17>> {
+  %0 = "stablehlo.map"(%arg0, %arg1) ({
+    ^bb0(%arg2: tensor<!quant.uniform<i8:f32, 1.0:17>>, %arg3: tensor<!quant.uniform<i8:f32, 1.0:17>>):
+    "stablehlo.return"(%arg2) : (tensor<!quant.uniform<i8:f32, 1.0:17>>) -> ()
+  }) {dimensions = array<i64: 0>} : (tensor<4x!quant.uniform<i8:f32, 1.0:17>>, tensor<4x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<4x!quant.uniform<i8:f32, 1.0:17>>
+  func.return %0 : tensor<4x!quant.uniform<i8:f32, 1.0:17>>
+}
+
+func.func @pad_quantization(%arg0: tensor<1x2x3x!quant.uniform<i8:f32, 1.0:17>>, %arg1: tensor<!quant.uniform<i8:f32, 1.0:17>>) -> tensor<2x4x7x!quant.uniform<i8:f32, 1.0:17>> {
+  %0 = "stablehlo.pad"(%arg0, %arg1) {
+    edge_padding_low = array<i64: 0, 1, 2>,
+    edge_padding_high = array<i64: 1, 1, 0>,
+    interior_padding = array<i64: 0, 0, 1>
+  } : (tensor<1x2x3x!quant.uniform<i8:f32, 1.0:17>>, tensor<!quant.uniform<i8:f32, 1.0:17>>) -> tensor<2x4x7x!quant.uniform<i8:f32, 1.0:17>>
+  func.return %0 : tensor<2x4x7x!quant.uniform<i8:f32, 1.0:17>>
+}
+
+func.func @reduce_quantization(%arg0: tensor<16x!quant.uniform<i8:f32, 1.0:17>>, %arg1: tensor<!quant.uniform<i8:f32, 1.0:17>>) -> tensor<!quant.uniform<i8:f32, 1.0:17>> {
+  %0 = "stablehlo.reduce"(%arg0, %arg1) ({
+    ^bb0(%arg2: tensor<!quant.uniform<i8:f32, 1.0:17>>, %arg3: tensor<!quant.uniform<i8:f32, 1.0:17>>):
+      %1 = "stablehlo.add"(%arg2, %arg3) : (tensor<!quant.uniform<i8:f32, 1.0:17>>, tensor<!quant.uniform<i8:f32, 1.0:17>>) -> tensor<!quant.uniform<i8:f32, 1.0:17>>
+      "stablehlo.return"(%1) : (tensor<!quant.uniform<i8:f32, 1.0:17>>) -> ()
+  }) {
+    dimensions = array<i64: 0>
+  } : (tensor<16x!quant.uniform<i8:f32, 1.0:17>>, tensor<!quant.uniform<i8:f32, 1.0:17>>) -> tensor<!quant.uniform<i8:f32, 1.0:17>>
+  func.return %0 : tensor<!quant.uniform<i8:f32, 1.0:17>>
+}
+
+func.func @reduce_precision_quantization(%arg0: tensor<6x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<6x!quant.uniform<i8:f32, 1.0:17>> {
+  %output = "stablehlo.reduce_precision"(%arg0) {
+    exponent_bits = 5 : i32,
+    mantissa_bits = 10 : i32
+  } : (tensor<6x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<6x!quant.uniform<i8:f32, 1.0:17>>
+  func.return %output : tensor<6x!quant.uniform<i8:f32, 1.0:17>>
+}
+
+
+func.func @reduce_scatter_quantization(%data: tensor<4x16x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<4x4x!quant.uniform<i8:f32, 1.0:17>> {
+  %0 = "stablehlo.reduce_scatter"(%data) ({
+    ^bb0(%arg2: tensor<!quant.uniform<i8:f32, 1.0:17>>, %arg3: tensor<!quant.uniform<i8:f32, 1.0:17>>):
+    %1 = stablehlo.add %arg2, %arg3 : tensor<!quant.uniform<i8:f32, 1.0:17>>
+    "stablehlo.return"(%1) : (tensor<!quant.uniform<i8:f32, 1.0:17>>) -> ()
+  }) {replica_groups = dense<[[0, 1, 2, 3]]> : tensor<1x4xi64>,
+      scatter_dimension = 1 : i64,
+      channel_handle = #stablehlo.channel_handle<handle = 1, type = 0>,
+      use_global_device_ids} : (tensor<4x16x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<4x4x!quant.uniform<i8:f32, 1.0:17>>
+  func.return %0 : tensor<4x4x!quant.uniform<i8:f32, 1.0:17>>
+}
+
+
+func.func @op_reduce_window_quantization(%arg0: tensor<2x17x31x7x!quant.uniform<i8:f32, 0.1:-30>>, %arg1: tensor<!quant.uniform<i8:f32, 0.1:-30>>) -> tensor<2x9x16x7x!quant.uniform<i8:f32, 0.1:-30>> {
+  %0 = "stablehlo.reduce_window"(%arg0, %arg1) ({
+    ^bb0(%arg2: tensor<!quant.uniform<i8:f32, 0.1:-30>>, %arg3: tensor<!quant.uniform<i8:f32, 0.1:-30>>):
+      %1 = "stablehlo.maximum"(%arg2, %arg3) : (tensor<!quant.uniform<i8:f32, 0.1:-30>>, tensor<!quant.uniform<i8:f32, 0.1:-30>>) -> tensor<!quant.uniform<i8:f32, 0.1:-30>>
+      "stablehlo.return"(%1) : (tensor<!quant.uniform<i8:f32, 0.1:-30>>) -> ()
+  }) {
+    window_dimensions = array<i64: 1, 2, 2, 1>,
+    window_strides = array<i64: 1, 4, 4, 1>,
+    base_dilations = array<i64: 1, 2, 2, 1>,
+    window_dilations = array<i64: 1, 2, 2, 1>,
+    padding = dense<[[0, 0], [2, 0], [0, 2], [0, 0]]> : tensor<4x2xi64>
+  } : (tensor<2x17x31x7x!quant.uniform<i8:f32, 0.1:-30>>, tensor<!quant.uniform<i8:f32, 0.1:-30>>) -> tensor<2x9x16x7x!quant.uniform<i8:f32, 0.1:-30>>
+  func.return %0 : tensor<2x9x16x7x!quant.uniform<i8:f32, 0.1:-30>>
+}
+
+func.func @reverse_quantization(%operand: tensor<3x2x!quant.uniform<i8:f32, 0.1:-30>>) -> tensor<3x2x!quant.uniform<i8:f32, 0.1:-30>> {
+  %result = "stablehlo.reverse"(%operand) {
+    dimensions = array<i64: 1>
+  } : (tensor<3x2x!quant.uniform<i8:f32, 0.1:-30>>) -> tensor<3x2x!quant.uniform<i8:f32, 0.1:-30>>
+  func.return %result : tensor<3x2x!quant.uniform<i8:f32, 0.1:-30>>
+}
+
+func.func @round_afz_quantization(%arg0: tensor<2x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<2x!quant.uniform<i8:f32, 1.0:17>> {
+  %0 = "stablehlo.round_nearest_afz"(%arg0) {} : (tensor<2x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<2x!quant.uniform<i8:f32, 1.0:17>>
+  func.return %0 : tensor<2x!quant.uniform<i8:f32, 1.0:17>>
+}
+
+func.func @round_even_quantization(%arg0: tensor<2x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<2x!quant.uniform<i8:f32, 1.0:17>> {
+  %0 = "stablehlo.round_nearest_even"(%arg0) {} : (tensor<2x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<2x!quant.uniform<i8:f32, 1.0:17>>
+  func.return %0 : tensor<2x!quant.uniform<i8:f32, 1.0:17>>
+}
+
+
+func.func @scatter_quantization(%arg0: tensor<200x100x300x!quant.uniform<i8:f32, 1.0:17>>, %arg1: tensor<10x2xi32>, %arg2: tensor<10x300x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<200x100x300x!quant.uniform<i8:f32, 1.0:17>> {
+  %0 = "stablehlo.scatter"(%arg0, %arg1, %arg2) ({
+    ^bb0(%arg3: tensor<!quant.uniform<i8:f32, 1.0:17>>, %arg4: tensor<!quant.uniform<i8:f32, 1.0:17>>):
+      %1 = "stablehlo.add"(%arg3, %arg4) : (tensor<!quant.uniform<i8:f32, 1.0:17>>, tensor<!quant.uniform<i8:f32, 1.0:17>>) -> tensor<!quant.uniform<i8:f32, 1.0:17>>
+      "stablehlo.return"(%1) : (tensor<!quant.uniform<i8:f32, 1.0:17>>) -> ()
+  }) {
+    scatter_dimension_numbers = #stablehlo.scatter<
+      update_window_dims = [1],
+      inserted_window_dims = [0, 1],
+      scatter_dims_to_operand_dims = [0, 1],
+      index_vector_dim = 1
+    >
+  } : (tensor<200x100x300x!quant.uniform<i8:f32, 1.0:17>>, tensor<10x2xi32>, tensor<10x300x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<200x100x300x!quant.uniform<i8:f32, 1.0:17>>
+  func.return %0 : tensor<200x100x300x!quant.uniform<i8:f32, 1.0:17>>
+}
+
+func.func @select_quantization(%arg0: tensor<2x3xi1>, %arg1: tensor<2x3x!quant.uniform<i8:f32, 1.0:17>>, %arg2: tensor<2x3x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<2x3x!quant.uniform<i8:f32, 1.0:17>> {
+  %0 = "stablehlo.select"(%arg0, %arg1, %arg2) : (tensor<2x3xi1>, tensor<2x3x!quant.uniform<i8:f32, 1.0:17>>, tensor<2x3x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<2x3x!quant.uniform<i8:f32, 1.0:17>>
+  func.return %0 : tensor<2x3x!quant.uniform<i8:f32, 1.0:17>>
+}
+
+func.func @select_and_scatter_quantization(%arg0: tensor<10x24x24x64x!quant.uniform<i8:f32, 1.0:17>>, %arg1: tensor<10x23x23x64x!quant.uniform<i8:f32, 1.0:17>>, %arg2: tensor<!quant.uniform<i8:f32, 1.0:17>>) -> tensor<10x24x24x64x!quant.uniform<i8:f32, 1.0:17>> {
+  %0 = "stablehlo.select_and_scatter"(%arg0, %arg1, %arg2) ({
+    ^bb0(%arg3: tensor<!quant.uniform<i8:f32, 1.0:17>>, %arg4: tensor<!quant.uniform<i8:f32, 1.0:17>>):
+      %1 = "stablehlo.compare"(%arg3, %arg4) {compare_type = #stablehlo<comparison_type TOTALORDER>, comparison_direction = #stablehlo<comparison_direction GE>} : (tensor<!quant.uniform<i8:f32, 1.0:17>>, tensor<!quant.uniform<i8:f32, 1.0:17>>) -> tensor<i1>
+      "stablehlo.return"(%1) : (tensor<i1>) -> ()
+  }, {
+    ^bb0(%arg3: tensor<!quant.uniform<i8:f32, 1.0:17>>, %arg4: tensor<!quant.uniform<i8:f32, 1.0:17>>):
+      %1 = "stablehlo.add"(%arg3, %arg4) : (tensor<!quant.uniform<i8:f32, 1.0:17>>, tensor<!quant.uniform<i8:f32, 1.0:17>>) -> tensor<!quant.uniform<i8:f32, 1.0:17>>
+      "stablehlo.return"(%1) : (tensor<!quant.uniform<i8:f32, 1.0:17>>) -> ()
+  }) {
+    window_dimensions = array<i64: 1, 2, 2, 1>
+  } : (tensor<10x24x24x64x!quant.uniform<i8:f32, 1.0:17>>, tensor<10x23x23x64x!quant.uniform<i8:f32, 1.0:17>>, tensor<!quant.uniform<i8:f32, 1.0:17>>) -> tensor<10x24x24x64x!quant.uniform<i8:f32, 1.0:17>>
+  func.return %0 : tensor<10x24x24x64x!quant.uniform<i8:f32, 1.0:17>>
+}
+
+func.func @slice(%arg0: tensor<3x4x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<1x2x!quant.uniform<i8:f32, 1.0:17>> {
+  %0 = "stablehlo.slice"(%arg0) {start_indices = array<i64: 1, 0>, limit_indices = array<i64: 2, 4>, strides = array<i64: 1, 2>} : (tensor<3x4x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<1x2x!quant.uniform<i8:f32, 1.0:17>>
+  func.return %0 : tensor<1x2x!quant.uniform<i8:f32, 1.0:17>>
+}
+
+func.func @sort(%input0: tensor<16x16x!quant.uniform<i8:f32, 1.0:17>>, %input1: tensor<16x16x!quant.uniform<i8:f32, 1.0:17>>) {
+  %0:2 = "stablehlo.sort"(%input0, %input1) ({
+  ^bb0(%arg0: tensor<!quant.uniform<i8:f32, 1.0:17>>, %arg1: tensor<!quant.uniform<i8:f32, 1.0:17>>, %arg2: tensor<!quant.uniform<i8:f32, 1.0:17>>, %arg3: tensor<!quant.uniform<i8:f32, 1.0:17>>):
+    %7 = "stablehlo.compare"(%arg0, %arg1) {comparison_direction = #stablehlo<comparison_direction GT>} : (tensor<!quant.uniform<i8:f32, 1.0:17>>, tensor<!quant.uniform<i8:f32, 1.0:17>>) -> tensor<i1>
+    "stablehlo.return"(%7) : (tensor<i1>) -> ()
+  }) {dimension = 1 : i64, is_stable = true} : (tensor<16x16x!quant.uniform<i8:f32, 1.0:17>>, tensor<16x16x!quant.uniform<i8:f32, 1.0:17>>) -> (tensor<16x16x!quant.uniform<i8:f32, 1.0:17>>, tensor<16x16x!quant.uniform<i8:f32, 1.0:17>>)
+  func.return
+}
+
+func.func @while_quantization(%arg0: tensor<4x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<*x!quant.uniform<i8:f32, 1.0:17>> {
+  %while = "stablehlo.while"(%arg0) ({
+  ^bb0(%arg1: tensor<?x!quant.uniform<i8:f32, 1.0:17>>):
+    %1 = stablehlo.constant dense<true> : tensor<i1>
+    stablehlo.return %1 : tensor<i1>
+  },  {
+  ^bb0(%arg1: tensor<?x!quant.uniform<i8:f32, 1.0:17>>):
+    stablehlo.return %arg1 : tensor<?x!quant.uniform<i8:f32, 1.0:17>>
+  }) : (tensor<4x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<*x!quant.uniform<i8:f32, 1.0:17>>
+  func.return %while : tensor<*x!quant.uniform<i8:f32, 1.0:17>>
+}
+
+
 // Negative Tests for StableHLO OPs supporting PerTensorQuantizedTensors but not PerAxisQuantizedTensors
 
 // -----
@@ -322,6 +468,17 @@ func.func @negative_log_quantization(%arg0: tensor<1x2x2x!quant.uniform<i8:f32:0
 
 // -----
 
+func.func @negative_map_quantization(%arg0: tensor<4x!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg1: tensor<4x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<4x!quant.uniform<i8:f32:0, {0.1:-30}>> {
+  // expected-error@+1 {{operand #0 must be variadic of tensor of f8E4M3B11FNUZ type or f8E4M3FN type or f8E4M3FNUZ type or f8E5M2 type or f8E5M2FNUZ type or 16-bit float or 32-bit float or 64-bit float or bfloat16 type or pred (AKA boolean or 1-bit integer) or 4/8/16/32/64-bit signless integer or 4/8/16/32/64-bit unsigned integer or complex type with 32-bit float or 64-bit float elements or 4/8/16/32-bit uniform quantized signed integer or 4/8/16/32-bit uniform quantized unsigned integer values, but got 'tensor<4x!quant.uniform<i8:f32:0, {1.000000e-01:-30}>>'}}
+  %map = "stablehlo.map"(%arg0, %arg1) ({
+    ^bb0(%arg2: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg3: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>):
+    "stablehlo.return"(%arg2) : (tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>) -> ()
+  }) {dimensions = array<i64: 0>} : (tensor<4x!quant.uniform<i8:f32:0, {0.1:-30}>>, tensor<4x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<4x!quant.uniform<i8:f32:0, {0.1:-30}>>
+  func.return %0 : tensor<4x!quant.uniform<i8:f32:0, {0.1:-30}>>
+}
+
+// -----
+
 func.func @negative_maximum_quantization(%arg0: tensor<1x2x2x!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg1: tensor<1x2x2x!quant.uniform<i8:f32:0, {0.1:-30}>>){
   // expected-error@+1 {{operand #0 must be tensor of f8E4M3B11FNUZ type or f8E4M3FN type or f8E4M3FNUZ type or f8E5M2 type or f8E5M2FNUZ type or 16-bit float or 32-bit float or 64-bit float or bfloat16 type or pred (AKA boolean or 1-bit integer) or 4/8/16/32/64-bit signless integer or 4/8/16/32/64-bit unsigned integer or complex type with 32-bit float or 64-bit float elements or 4/8/16/32-bit uniform quantized signed integer or 4/8/16/32-bit uniform quantized unsigned integer values, but got 'tensor<1x2x2x!quant.uniform<i8:f32:0, {1.000000e-01:-30}>>'}}
   %maximum = "stablehlo.maximum"(%arg0, %arg1) : (tensor<1x2x2x!quant.uniform<i8:f32:0, {0.1:-30}>>, tensor<1x2x2x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<1x2x2x!quant.uniform<i8:f32:0, {0.1:-30}>>
@@ -361,11 +518,36 @@ func.func @negative_optimization_barrier_quantization(%arg0: tensor<1x2x2x!quant
 }
 
 // -----
+func.func @negative_pad_quantization(%arg0: tensor<1x2x3x!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg1: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<2x4x7x!quant.uniform<i8:f32:0, {0.1:-30}>> {
+  // expected-error@+1 {{operand #0 must be tensor of f8E4M3B11FNUZ type or f8E4M3FN type or f8E4M3FNUZ type or f8E5M2 type or f8E5M2FNUZ type or 16-bit float or 32-bit float or 64-bit float or bfloat16 type or pred (AKA boolean or 1-bit integer) or 4/8/16/32/64-bit signless integer or 4/8/16/32/64-bit unsigned integer or complex type with 32-bit float or 64-bit float elements or 4/8/16/32-bit uniform quantized signed integer or 4/8/16/32-bit uniform quantized unsigned integer values, but got 'tensor<1x2x3x!quant.uniform<i8:f32:0, {1.000000e-01:-30}>>'}}
+  %pad = "stablehlo.pad"(%arg0, %arg1) {
+    edge_padding_low = array<i64: 0, 1, 2>,
+    edge_padding_high = array<i64: 1, 1, 0>,
+    interior_padding = array<i64: 0, 0, 1>
+  } : (tensor<1x2x3x!quant.uniform<i8:f32:0, {0.1:-30}>>, tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<2x4x7x!quant.uniform<i8:f32:0, {0.1:-30}>>
+  func.return %pad : tensor<2x4x7x!quant.uniform<i8:f32:0, {0.1:-30}>>
+}
+
+// -----
 
 func.func @negative_power_quantization(%arg0: tensor<1x2x2x!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg1: tensor<1x2x2x!quant.uniform<i8:f32:0, {0.1:-30}>>){
   // expected-error@+1 {{operand #0 must be tensor of 4/8/16/32/64-bit signless integer or 4/8/16/32/64-bit unsigned integer or f8E4M3B11FNUZ type or f8E4M3FN type or f8E4M3FNUZ type or f8E5M2 type or f8E5M2FNUZ type or 16-bit float or 32-bit float or 64-bit float or bfloat16 type or complex type with 32-bit float or 64-bit float elements or 4/8/16/32-bit uniform quantized signed integer or 4/8/16/32-bit uniform quantized unsigned integer values, but got 'tensor<1x2x2x!quant.uniform<i8:f32:0, {1.000000e-01:-30}>>'}}
   %power = "stablehlo.power"(%arg0, %arg1) : (tensor<1x2x2x!quant.uniform<i8:f32:0, {0.1:-30}>>, tensor<1x2x2x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<1x2x2x!quant.uniform<i8:f32:0, {0.1:-30}>>
   func.return
+}
+
+// -----
+
+func.func @reduce_quantization(%arg0: tensor<16x!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg1: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<!quant.uniform<i8:f32:0, {0.1:-30}>> {
+  // expected-error@+1 {{operand #0 must be variadic of tensor of f8E4M3B11FNUZ type or f8E4M3FN type or f8E4M3FNUZ type or f8E5M2 type or f8E5M2FNUZ type or 16-bit float or 32-bit float or 64-bit float or bfloat16 type or pred (AKA boolean or 1-bit integer) or 4/8/16/32/64-bit signless integer or 4/8/16/32/64-bit unsigned integer or complex type with 32-bit float or 64-bit float elements or 4/8/16/32-bit uniform quantized signed integer or 4/8/16/32-bit uniform quantized unsigned integer values, but got 'tensor<16x!quant.uniform<i8:f32:0, {1.000000e-01:-30}>>'}}
+  %reduce = "stablehlo.reduce"(%arg0, %arg1) ({
+    ^bb0(%arg2: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg3: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>):
+      %1 = "stablehlo.add"(%arg2, %arg3) : (tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>, tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>
+      "stablehlo.return"(%1) : (tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>) -> ()
+  }) {
+    dimensions = array<i64: 0>
+  } : (tensor<16x!quant.uniform<i8:f32:0, {0.1:-30}>>, tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>
+  func.return %reduce : tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>
 }
 
 // -----
@@ -485,4 +667,156 @@ func.func @negative_gather_quantization(%operand : tensor<*x!quant.uniform<i8:f3
     indices_are_sorted = false
   } : (tensor<*x!quant.uniform<i8:f32:0, {0.1:-30}>>, tensor<1x5x2xi32>) -> tensor<8x?x7x1x6x1x?x!quant.uniform<i8:f32:0, {0.1:-30}>>
   func.return %res : tensor<8x?x7x1x6x1x?x!quant.uniform<i8:f32:0, {0.1:-30}>>
+}
+
+// -----
+
+func.func @negative_reduce_precision_quantization(%arg0: tensor<6x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<6x!quant.uniform<i8:f32:0, {0.1:-30}>> {
+  // expected-error@+1 {{operand #0 must be tensor of f8E4M3B11FNUZ type or f8E4M3FN type or f8E4M3FNUZ type or f8E5M2 type or f8E5M2FNUZ type or 16-bit float or 32-bit float or 64-bit float or bfloat16 type or 4/8/16/32-bit uniform quantized signed integer or 4/8/16/32-bit uniform quantized unsigned integer values, but got 'tensor<6x!quant.uniform<i8:f32:0, {1.000000e-01:-30}>>'}}
+  %output = "stablehlo.reduce_precision"(%arg0) {
+    exponent_bits = 5 : i32,
+    mantissa_bits = 10 : i32
+  } : (tensor<6x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<6x!quant.uniform<i8:f32:0, {0.1:-30}>>
+  func.return %output : tensor<6x!quant.uniform<i8:f32:0, {0.1:-30}>>
+}
+
+// -----
+
+func.func @negative_reduce_scatter_quantization(%data: tensor<4x16x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<4x4x!quant.uniform<i8:f32:0, {0.1:-30}>> {
+  // expected-error@+1 {{operand #0 must be tensor of f8E4M3B11FNUZ type or f8E4M3FN type or f8E4M3FNUZ type or f8E5M2 type or f8E5M2FNUZ type or 16-bit float or 32-bit float or 64-bit float or bfloat16 type or pred (AKA boolean or 1-bit integer) or 4/8/16/32/64-bit signless integer or 4/8/16/32/64-bit unsigned integer or complex type with 32-bit float or 64-bit float elements or 4/8/16/32-bit uniform quantized signed integer or 4/8/16/32-bit uniform quantized unsigned integer values, but got 'tensor<4x16x!quant.uniform<i8:f32:0, {1.000000e-01:-30}>>'}}
+  %0 = "stablehlo.reduce_scatter"(%data) ({
+    ^bb0(%arg2: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg3: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>):
+    %1 = stablehlo.add %arg2, %arg3 : tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>
+    "stablehlo.return"(%1) : (tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>) -> ()
+  }) {replica_groups = dense<[[0, 1, 2, 3]]> : tensor<1x4xi64>,
+      scatter_dimension = 1 : i64,
+      channel_handle = #stablehlo.channel_handle<handle = 1, type = 0>,
+      use_global_device_ids} : (tensor<4x16x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<4x4x!quant.uniform<i8:f32:0, {0.1:-30}>>
+  func.return %0 : tensor<4x4x!quant.uniform<i8:f32:0, {0.1:-30}>>
+}
+
+// -----
+
+func.func @negative_reduce_window_quantization(%arg0: tensor<2x17x31x7x!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg1: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<2x9x16x7x!quant.uniform<i8:f32:0, {0.1:-30}>> {
+  // expected-error@+1 {{operand #0 must be variadic of tensor of f8E4M3B11FNUZ type or f8E4M3FN type or f8E4M3FNUZ type or f8E5M2 type or f8E5M2FNUZ type or 16-bit float or 32-bit float or 64-bit float or bfloat16 type or pred (AKA boolean or 1-bit integer) or 4/8/16/32/64-bit signless integer or 4/8/16/32/64-bit unsigned integer or complex type with 32-bit float or 64-bit float elements or 4/8/16/32-bit uniform quantized signed integer or 4/8/16/32-bit uniform quantized unsigned integer values, but got 'tensor<2x17x31x7x!quant.uniform<i8:f32:0, {1.000000e-01:-30}>>'}}
+  %0 = "stablehlo.reduce_window"(%arg0, %arg1) ({
+    ^bb0(%arg2: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg3: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>):
+      %1 = "stablehlo.maximum"(%arg2, %arg3) : (tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>, tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>
+      "stablehlo.return"(%1) : (tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>) -> ()
+  }) {
+    window_dimensions = array<i64: 1, 2, 2, 1>,
+    window_strides = array<i64: 1, 4, 4, 1>,
+    base_dilations = array<i64: 1, 2, 2, 1>,
+    window_dilations = array<i64: 1, 2, 2, 1>,
+    padding = dense<[[0, 0], [2, 0], [0, 2], [0, 0]]> : tensor<4x2xi64>
+  } : (tensor<2x17x31x7x!quant.uniform<i8:f32:0, {0.1:-30}>>, tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<2x9x16x7x!quant.uniform<i8:f32:0, {0.1:-30}>>
+  func.return %0 : tensor<2x9x16x7x!quant.uniform<i8:f32:0, {0.1:-30}>>
+}
+
+// -----
+
+func.func @negative_reverse_quantization(%operand: tensor<3x2x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<3x2x!quant.uniform<i8:f32:0, {0.1:-30}>> {
+  // expected-error@+1 {{operand #0 must be tensor of f8E4M3B11FNUZ type or f8E4M3FN type or f8E4M3FNUZ type or f8E5M2 type or f8E5M2FNUZ type or 16-bit float or 32-bit float or 64-bit float or bfloat16 type or pred (AKA boolean or 1-bit integer) or 4/8/16/32/64-bit signless integer or 4/8/16/32/64-bit unsigned integer or complex type with 32-bit float or 64-bit float elements or 4/8/16/32-bit uniform quantized signed integer or 4/8/16/32-bit uniform quantized unsigned integer values, but got 'tensor<3x2x!quant.uniform<i8:f32:0, {1.000000e-01:-30}>>'}}
+  %result = "stablehlo.reverse"(%operand) {
+    dimensions = array<i64: 1>
+  } : (tensor<3x2x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<3x2x!quant.uniform<i8:f32:0, {0.1:-30}>>
+  func.return %result : tensor<3x2x!quant.uniform<i8:f32:0, {0.1:-30}>>
+}
+
+// -----
+
+func.func @negative_round_afz(%arg0: tensor<2x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<2x!quant.uniform<i8:f32:0, {0.1:-30}>> {
+  // expected-error@+1 {{ operand #0 must be tensor of f8E4M3B11FNUZ type or f8E4M3FN type or f8E4M3FNUZ type or f8E5M2 type or f8E5M2FNUZ type or 16-bit float or 32-bit float or 64-bit float or bfloat16 type or 4/8/16/32-bit uniform quantized signed integer or 4/8/16/32-bit uniform quantized unsigned integer values, but got 'tensor<2x!quant.uniform<i8:f32:0, {1.000000e-01:-30}>>'}}
+  %0 = "stablehlo.round_nearest_afz"(%arg0) {} : (tensor<2x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<2x!quant.uniform<i8:f32:0, {0.1:-30}>>
+  func.return %0 : tensor<2x!quant.uniform<i8:f32:0, {0.1:-30}>>
+}
+
+// -----
+
+func.func @negative_round_even(%arg0: tensor<2x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<2x!quant.uniform<i8:f32:0, {0.1:-30}>> {
+  // expected-error@+1 {{ operand #0 must be tensor of f8E4M3B11FNUZ type or f8E4M3FN type or f8E4M3FNUZ type or f8E5M2 type or f8E5M2FNUZ type or 16-bit float or 32-bit float or 64-bit float or bfloat16 type or 4/8/16/32-bit uniform quantized signed integer or 4/8/16/32-bit uniform quantized unsigned integer values, but got 'tensor<2x!quant.uniform<i8:f32:0, {1.000000e-01:-30}>>'}}
+  %0 = "stablehlo.round_nearest_even"(%arg0) {} : (tensor<2x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<2x!quant.uniform<i8:f32:0, {0.1:-30}>>
+  func.return %0 : tensor<2x!quant.uniform<i8:f32:0, {0.1:-30}>>
+}
+
+// -----
+
+func.func @negative_scatter_quantization(%arg0: tensor<200x100x300x!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg1: tensor<10x2xi32>, %arg2: tensor<10x300x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<200x100x300x!quant.uniform<i8:f32:0, {0.1:-30}>> {
+  // expected-error@+1 {{operand #0 must be variadic of tensor of f8E4M3B11FNUZ type or f8E4M3FN type or f8E4M3FNUZ type or f8E5M2 type or f8E5M2FNUZ type or 16-bit float or 32-bit float or 64-bit float or bfloat16 type or pred (AKA boolean or 1-bit integer) or 4/8/16/32/64-bit signless integer or 4/8/16/32/64-bit unsigned integer or complex type with 32-bit float or 64-bit float elements or 4/8/16/32-bit uniform quantized signed integer or 4/8/16/32-bit uniform quantized unsigned integer values, but got 'tensor<200x100x300x!quant.uniform<i8:f32:0, {1.000000e-01:-30}>>'}}
+  %0 = "stablehlo.scatter"(%arg0, %arg1, %arg2) ({
+    ^bb0(%arg3: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg4: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>):
+      %1 = "stablehlo.add"(%arg3, %arg4) : (tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>, tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>
+      "stablehlo.return"(%1) : (tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>) -> ()
+  }) {
+    scatter_dimension_numbers = #stablehlo.scatter<
+      update_window_dims = [1],
+      inserted_window_dims = [0, 1],
+      scatter_dims_to_operand_dims = [0, 1],
+      index_vector_dim = 1
+    >
+  } : (tensor<200x100x300x!quant.uniform<i8:f32:0, {0.1:-30}>>, tensor<10x2xi32>, tensor<10x300x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<200x100x300x!quant.uniform<i8:f32:0, {0.1:-30}>>
+  func.return %0 : tensor<200x100x300x!quant.uniform<i8:f32:0, {0.1:-30}>>
+}
+
+// -----
+
+func.func @select_quantization(%arg0: tensor<2x3xi1>, %arg1: tensor<2x3x!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg2: tensor<2x3x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<2x3x!quant.uniform<i8:f32:0, {0.1:-30}>> {
+  // expected-error@+1 {{operand #1 must be tensor of f8E4M3B11FNUZ type or f8E4M3FN type or f8E4M3FNUZ type or f8E5M2 type or f8E5M2FNUZ type or 16-bit float or 32-bit float or 64-bit float or bfloat16 type or pred (AKA boolean or 1-bit integer) or 4/8/16/32/64-bit signless integer or 4/8/16/32/64-bit unsigned integer or complex type with 32-bit float or 64-bit float elements or 4/8/16/32-bit uniform quantized signed integer or 4/8/16/32-bit uniform quantized unsigned integer values, but got 'tensor<2x3x!quant.uniform<i8:f32:0, {1.000000e-01:-30}>>'}}
+  %0 = "stablehlo.select"(%arg0, %arg1, %arg2) : (tensor<2x3xi1>, tensor<2x3x!quant.uniform<i8:f32:0, {0.1:-30}>>, tensor<2x3x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<2x3x!quant.uniform<i8:f32:0, {0.1:-30}>>
+  func.return %0 : tensor<2x3x!quant.uniform<i8:f32:0, {0.1:-30}>>
+}
+
+// -----
+
+func.func @slice(%arg0: tensor<3x4x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<1x2x!quant.uniform<i8:f32:0, {0.1:-30}>> {
+  // expected-error@+1 {{operand #0 must be tensor of f8E4M3B11FNUZ type or f8E4M3FN type or f8E4M3FNUZ type or f8E5M2 type or f8E5M2FNUZ type or 16-bit float or 32-bit float or 64-bit float or bfloat16 type or pred (AKA boolean or 1-bit integer) or 4/8/16/32/64-bit signless integer or 4/8/16/32/64-bit unsigned integer or complex type with 32-bit float or 64-bit float elements or 4/8/16/32-bit uniform quantized signed integer or 4/8/16/32-bit uniform quantized unsigned integer values, but got 'tensor<3x4x!quant.uniform<i8:f32:0, {1.000000e-01:-30}>>'}}
+  %0 = "stablehlo.slice"(%arg0) {start_indices = array<i64: 1, 0>, limit_indices = array<i64: 2, 4>, strides = array<i64: 1, 2>} : (tensor<3x4x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<1x2x!quant.uniform<i8:f32:0, {0.1:-30}>>
+  func.return %0 : tensor<1x2x!quant.uniform<i8:f32:0, {0.1:-30}>>
+}
+
+// -----
+
+
+func.func @sort(%input0: tensor<16x16x!quant.uniform<i8:f32:0, {0.1:-30}>>, %input1: tensor<16x16x!quant.uniform<i8:f32:0, {0.1:-30}>>) {
+  // expected-error@+1 {{operand #0 must be variadic of tensor of f8E4M3B11FNUZ type or f8E4M3FN type or f8E4M3FNUZ type or f8E5M2 type or f8E5M2FNUZ type or 16-bit float or 32-bit float or 64-bit float or bfloat16 type or pred (AKA boolean or 1-bit integer) or 4/8/16/32/64-bit signless integer or 4/8/16/32/64-bit unsigned integer or complex type with 32-bit float or 64-bit float elements or 4/8/16/32-bit uniform quantized signed integer or 4/8/16/32-bit uniform quantized unsigned integer values, but got 'tensor<16x16x!quant.uniform<i8:f32:0, {1.000000e-01:-30}>>'}}
+  %0:2 = "stablehlo.sort"(%input0, %input1) ({
+  ^bb0(%arg0: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg1: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg2: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg3: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>):
+    %7 = "stablehlo.compare"(%arg0, %arg1) {comparison_direction = #stablehlo<comparison_direction GT>} : (tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>, tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<i1>
+    "stablehlo.return"(%7) : (tensor<i1>) -> ()
+  }) {dimension = 1 : i64, is_stable = true} : (tensor<16x16x!quant.uniform<i8:f32:0, {0.1:-30}>>, tensor<16x16x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> (tensor<16x16x!quant.uniform<i8:f32:0, {0.1:-30}>>, tensor<16x16x!quant.uniform<i8:f32:0, {0.1:-30}>>)
+  func.return
+}
+
+// -----
+
+
+func.func @negative_while_quantization(%arg0: tensor<4x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<*x!quant.uniform<i8:f32:0, {0.1:-30}>> {
+  // expected-error@+1 {{operand #0 must be variadic of tensor of f8E4M3B11FNUZ type or f8E4M3FN type or f8E4M3FNUZ type or f8E5M2 type or f8E5M2FNUZ type or 16-bit float or 32-bit float or 64-bit float or bfloat16 type or pred (AKA boolean or 1-bit integer) or 4/8/16/32/64-bit signless integer or 4/8/16/32/64-bit unsigned integer or complex type with 32-bit float or 64-bit float elements or 4/8/16/32-bit uniform quantized signed integer or 4/8/16/32-bit uniform quantized unsigned integer values or token, but got 'tensor<4x!quant.uniform<i8:f32:0, {1.000000e-01:-30}>>'}}
+  %0 = "stablehlo.while"(%arg0) ({
+  ^bb0(%arg1: tensor<?x!quant.uniform<i8:f32:0, {0.1:-30}>>):
+    %1 = stablehlo.constant dense<true> : tensor<i1>
+    stablehlo.return %1 : tensor<i1>
+  },  {
+  ^bb0(%arg1: tensor<?x!quant.uniform<i8:f32:0, {0.1:-30}>>):
+    stablehlo.return %arg1 : tensor<?x!quant.uniform<i8:f32:0, {0.1:-30}>>
+  }) : (tensor<4x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<*x!quant.uniform<i8:f32:0, {0.1:-30}>>
+  func.return %0 : tensor<*x!quant.uniform<i8:f32:0, {0.1:-30}>>
+}
+
+// -----
+
+func.func @select_and_scatter_quantization(%arg0: tensor<10x24x24x64x!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg1: tensor<10x23x23x64x!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg2: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<10x24x24x64x!quant.uniform<i8:f32:0, {0.1:-30}>> {
+  // expected-error@+1 {{operand #0 must be tensor of f8E4M3B11FNUZ type or f8E4M3FN type or f8E4M3FNUZ type or f8E5M2 type or f8E5M2FNUZ type or 16-bit float or 32-bit float or 64-bit float or bfloat16 type or pred (AKA boolean or 1-bit integer) or 4/8/16/32/64-bit signless integer or 4/8/16/32/64-bit unsigned integer or complex type with 32-bit float or 64-bit float elements or 4/8/16/32-bit uniform quantized signed integer or 4/8/16/32-bit uniform quantized unsigned integer values, but got 'tensor<10x24x24x64x!quant.uniform<i8:f32:0, {1.000000e-01:-30}>>'}}
+  %0 = "stablehlo.select_and_scatter"(%arg0, %arg1, %arg2) ({
+    ^bb0(%arg3: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg4: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>):
+      %1 = "stablehlo.compare"(%arg3, %arg4) {compare_type = #stablehlo<comparison_type TOTALORDER>, comparison_direction = #stablehlo<comparison_direction GE>} : (tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>, tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<i1>
+      "stablehlo.return"(%1) : (tensor<i1>) -> ()
+  }, {
+    ^bb0(%arg3: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>, %arg4: tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>):
+      %1 = "stablehlo.add"(%arg3, %arg4) : (tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>, tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>
+      "stablehlo.return"(%1) : (tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>) -> ()
+  }) {
+    window_dimensions = array<i64: 1, 2, 2, 1>
+  } : (tensor<10x24x24x64x!quant.uniform<i8:f32:0, {0.1:-30}>>, tensor<10x23x23x64x!quant.uniform<i8:f32:0, {0.1:-30}>>, tensor<!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<10x24x24x64x!quant.uniform<i8:f32:0, {0.1:-30}>>
+  func.return %0 : tensor<10x24x24x64x!quant.uniform<i8:f32:0, {0.1:-30}>>
 }
