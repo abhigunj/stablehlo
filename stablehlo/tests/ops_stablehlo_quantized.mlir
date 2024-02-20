@@ -1,9 +1,8 @@
 // RUN: stablehlo-opt %s -verify-diagnostics -split-input-file -allow-unregistered-dialect | FileCheck %s
 
-// Tests for StableHLO OPs supporting Quantization
 
 // -----
-// Tests for StableHLO OPs supporting PerAxisQuantizedTensors
+// Tests for StableHLO OPs supporting per-axis quantization. These OPs also support per-tensor quantization.
 
 // CHECK-LABEL: @per_axis_quantized_ops
 func.func @per_axis_quantized_ops(
@@ -22,7 +21,7 @@ func.func @per_axis_quantized_ops(
   func.return
 }
 
-// %arg1 can be a PerAxis Quantized
+// %arg1 can be a per-axis Quantized
 func.func @dot_general_quantization(%arg0: tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, %arg1: tensor<2x3x5x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<2x4x5x!quant.uniform<i8:f32:0, {0.1:-30}>> {
   %0 = "stablehlo.dot_general"(%arg0, %arg1) {
     dot_dimension_numbers = #stablehlo.dot<
@@ -36,9 +35,9 @@ func.func @dot_general_quantization(%arg0: tensor<2x3x4x!quant.uniform<i8:f32, 1
 }
 
 // -----
-// Tests for StableHLO OPs supporting PerTensorQuantizedTensors
+// Tests for StableHLO OPs supporting per-tensor quantization. These OPs may or may not support per-axis quantization
 
-func.func @quantization_supported_ops(
+func.func @per_tensor_quantized_ops(
   %arg0: tensor<1x2x2x!quant.uniform<i8:f32, 1.0:17>>,
   %arg1: tensor<1x2x2x!quant.uniform<i8:f32, 1.0:17>>,
   %arg2: tensor<!quant.uniform<i8:f32, 1.0:17>>,
@@ -295,9 +294,9 @@ func.func @while_quantization(%arg0: tensor<4x!quant.uniform<i8:f32, 1.0:17>>) -
 }
 
 
-// Negative Tests for StableHLO OPs supporting PerTensorQuantizedTensors but not PerAxisQuantizedTensors
-
 // -----
+// Negative Tests for StableHLO OPs supporting only per-tensor quantization and not per-axis quantization
+
 
 func.func @negative_abs_quantization(%arg0: tensor<1x2x2x!quant.uniform<i8:f32:0, {0.1:-30}>>){
   // expected-error@+1 {{operand #0 must be tensor of 4/8/16/32/64-bit signless integer or f8E4M3B11FNUZ type or f8E4M3FN type or f8E4M3FNUZ type or f8E5M2 type or f8E5M2FNUZ type or 16-bit float or 32-bit float or 64-bit float or bfloat16 type or complex type with 32-bit float or 64-bit float elements or 4/8/16/32-bit uniform quantized signed integer or 4/8/16/32-bit uniform quantized unsigned integer values, but got 'tensor<1x2x2x!quant.uniform<i8:f32:0, {1.000000e-01:-30}>>'}}
@@ -785,22 +784,6 @@ func.func @negative_sort_quantization(%input0: tensor<16x16x!quant.uniform<i8:f3
     "stablehlo.return"(%7) : (tensor<i1>) -> ()
   }) {dimension = 1 : i64, is_stable = true} : (tensor<16x16x!quant.uniform<i8:f32:0, {0.1:-30}>>, tensor<16x16x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> (tensor<16x16x!quant.uniform<i8:f32:0, {0.1:-30}>>, tensor<16x16x!quant.uniform<i8:f32:0, {0.1:-30}>>)
   func.return
-}
-
-// -----
-
-
-func.func @negative_while_quantization(%arg0: tensor<4x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<*x!quant.uniform<i8:f32:0, {0.1:-30}>> {
-  // expected-error@+1 {{operand #0 must be variadic of tensor of f8E4M3B11FNUZ type or f8E4M3FN type or f8E4M3FNUZ type or f8E5M2 type or f8E5M2FNUZ type or 16-bit float or 32-bit float or 64-bit float or bfloat16 type or pred (AKA boolean or 1-bit integer) or 4/8/16/32/64-bit signless integer or 4/8/16/32/64-bit unsigned integer or complex type with 32-bit float or 64-bit float elements or 4/8/16/32-bit uniform quantized signed integer or 4/8/16/32-bit uniform quantized unsigned integer values or token, but got 'tensor<4x!quant.uniform<i8:f32:0, {1.000000e-01:-30}>>'}}
-  %0 = "stablehlo.while"(%arg0) ({
-  ^bb0(%arg1: tensor<?x!quant.uniform<i8:f32:0, {0.1:-30}>>):
-    %1 = stablehlo.constant dense<true> : tensor<i1>
-    stablehlo.return %1 : tensor<i1>
-  },  {
-  ^bb0(%arg1: tensor<?x!quant.uniform<i8:f32:0, {0.1:-30}>>):
-    stablehlo.return %arg1 : tensor<?x!quant.uniform<i8:f32:0, {0.1:-30}>>
-  }) : (tensor<4x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<*x!quant.uniform<i8:f32:0, {0.1:-30}>>
-  func.return %0 : tensor<*x!quant.uniform<i8:f32:0, {0.1:-30}>>
 }
 
 // -----
