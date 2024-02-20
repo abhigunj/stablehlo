@@ -1492,7 +1492,7 @@ def StableHLO_GetTupleElementOp: StableHLO_Op<"get_tuple_element", [Pure,
 
     Example:
     ```mlir
-    %result = stablehlo.get_tuple_element %operand[0] : (tuple<tensor<2xf64>, tuple<tensor<i64>>>) -> tensor<2xf64>
+    %result = stablehlo.get_tuple_element %operand[0] : (tuple<tensor<2xf64>, tensor<i64>>) -> tensor<2xf64>
     ```
   }];
   let arguments = (ins
@@ -1518,7 +1518,7 @@ def StableHLO_TupleOp : StableHLO_Op<"tuple", [Pure,
 
     Example:
     ```mlir
-    %result = stablehlo.tuple %val0, %val1 : tuple<tensor<2xf64>, tuple<tensor<i64>>>
+    %result = stablehlo.tuple %val0, %val1 : tuple<tensor<2xf64>, tensor<i64>>
     ```
    }];
 
