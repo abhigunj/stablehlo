@@ -221,8 +221,6 @@ def HLO_StaticShapeTensor : StaticShapeTensorOf<[
 def HLO_StaticShapeTensorOrPerAxisQuantizedTensor : StaticShapeTensorOf<[
       HLO_Float, HLO_Pred, HLO_Int, HLO_Complex, HLO_QuantizedInt, HLO_PerAxisQuantizedInt]>;
 
-def HLO_StaticShapeTensorOrToken : AnyTypeOf<[HLO_StaticShapeTensor, HLO_Token]>;
-
 def HLO_StaticShapeTensorOrPerAxisQuantizedOrToken : AnyTypeOf<[HLO_StaticShapeTensor, HLO_PerAxisQuantizedIntTensor, HLO_Token]>;
 
 def HLO_StaticShapeIntOrFpTensor : StaticShapeTensorOf<[HLO_Int, HLO_Float]>;
