@@ -83,7 +83,7 @@ def StableHLO_ConstantOp : StableHLO_Op<"constant",
   );
 
   let results = (outs
-    HLO_StaticShapeTensor:$output
+    HLO_StaticShapeTensorOrPerAxisQuantizedTensor:$output
   );
 
   let builders = [
@@ -113,7 +113,7 @@ def StableHLO_IotaOp : StableHLO_Op<"iota", [Pure]> {
   }];
   let arguments = (ins I64Attr:$iota_dimension);
 
-  let results = (outs HLO_StaticShapeIntFpOrComplexTensor:$output);
+  let results = (outs HLO_StaticShapeIntFpComplexOrQuantizedTensor:$output);
 
   let hasVerifier = 1;
 
@@ -246,7 +246,7 @@ def StableHLO_CeilOp: StableHLO_UnaryElementwiseOp<"ceil",
 }
 
 def StableHLO_ConvertOp : StableHLO_UnaryElementwiseOp<"convert",
-    [Pure, SameOperandsAndResultShape /*convert_c1*/], HLO_TensorNonQuantized> { /*convert_i1*/
+    [Pure, SameOperandsAndResultShape /*convert_c1*/], HLO_NonQuantizedTensor> { /*convert_i1*/
   let summary = "Convert operation";
   let description = [{
     Performs an element-wise conversion from one element type to another on
@@ -371,7 +371,7 @@ def StableHLO_ImagOp: StableHLO_UnaryElementwiseOp<"imag",
 }
 
 def StableHLO_IsFiniteOp: StableHLO_UnaryElementwiseOp<"is_finite", [Pure,
-    DeclareOpInterfaceMethods<InferTypeOpInterface>], HLO_Tensor> {
+    DeclareOpInterfaceMethods<InferTypeOpInterface>], HLO_FpOrQuantizedIntTensor> {
     /*is_finite_c1*/
   let summary = "IsFinite operation";
   let description = [{
@@ -679,7 +679,7 @@ class StableHLO_BinaryElementwiseOp<string mnemonic, list<Trait> traits,
 
 def StableHLO_AddOp : StableHLO_BinaryElementwiseOp<"add",
       [HLO_Commutative, Pure, HLO_CompatibleOperandsAndResultType],
-      HLO_TensorOrPerAxisQuantized> {
+      HLO_TensorOrPerAxisQuantizedTensor> {
   let summary = "Add operation";
   let description = [{
     Performs element-wise addition of two tensors `lhs` and `rhs` and produces a
@@ -1004,7 +1004,7 @@ def StableHLO_InfeedOp : StableHLO_Op<"infeed"> {
     DefaultValuedStrAttr<StrAttr, "">:$infeed_config, /*infeed_i2*/
     OptionalAttr<ArrayAttr>:$layout
   );
-  let results = (outs Variadic<HLO_StaticShapeTensorOrToken>);
+  let results = (outs Variadic<HLO_StaticShapeTensorOrPerAxisQuantizedOrToken>);
   let hasVerifier = 1;
 }
 
@@ -1025,7 +1025,7 @@ def StableHLO_OutfeedOp : StableHLO_Op<"outfeed",
   }];
 
   let arguments = (ins
-    Variadic<HLO_TensorOrPerAxisQuantized>:$inputs, /*outfeed_i1*/
+    Variadic<HLO_TensorOrPerAxisQuantizedTensor>:$inputs, /*outfeed_i1*/
     HLO_Token:$token, /*outfeed_i2*/
     DefaultValuedStrAttr<StrAttr, "">:$outfeed_config /*outfeed_i3*/
   );
@@ -1051,7 +1051,7 @@ def StableHLO_SendOp : StableHLO_Op<"send",
   }];
 
   let arguments = (ins
-    Variadic<HLO_TensorOrPerAxisQuantized>:$inputs, /*send_i1*/
+    Variadic<HLO_TensorOrPerAxisQuantizedTensor>:$inputs, /*send_i1*/
     HLO_Token:$token, /*send_i2*/
     StableHLO_ChannelHandle:$channel_handle, /*send_i3_i4*/
     DefaultValuedOptionalAttr<BoolAttr, "false">:$is_host_transfer /*send_i5*/
@@ -1083,7 +1083,7 @@ def StableHLO_RecvOp : StableHLO_Op<"recv"> {
     DefaultValuedOptionalAttr<BoolAttr, "false">:$is_host_transfer /*recv_i4*/
   );
 
-  let results = (outs Variadic<HLO_StaticShapeTensorOrToken>);
+  let results = (outs Variadic<HLO_StaticShapeTensorOrPerAxisQuantizedOrToken>);
   let hasVerifier = 1;
 }
 
@@ -1188,7 +1188,7 @@ def StableHLO_IfOp: StableHLO_Op<"if", [
   let regions = (region SizedRegion<1>:$true_branch /*if_i2*/,
                         SizedRegion<1>:$false_branch /*if_i3*/);
 
-  let results = (outs Variadic<HLO_TensorOrToken>);
+  let results = (outs Variadic<HLO_TensorOrPerAxisQuantizedOrToken>);
 }
 
 // Xla Client API has two separate calls for indexed and predicated conditional,
@@ -1223,7 +1223,7 @@ def StableHLO_CaseOp: StableHLO_Op<"case", [
 
   let regions = (region VariadicRegion<SizedRegion<1>>:$branches /*case_i2*/);
 
-  let results = (outs Variadic<HLO_TensorOrToken>);
+  let results = (outs Variadic<HLO_TensorOrPerAxisQuantizedOrToken>);
 }
 
 
@@ -1254,14 +1254,14 @@ def StableHLO_WhileOp: StableHLO_Op<"while", [
     }
     ```
   }];
-  let arguments = (ins Variadic<HLO_TensorOrToken>:$operand /*while_i1*/);
+  let arguments = (ins Variadic<HLO_TensorOrPerAxisQuantizedOrToken>:$operand /*while_i1*/);
 
   let regions = (region
     SizedRegion<1>:$cond /*while_i2*/,
     SizedRegion<1>:$body /*while_i3*/
   );
 
-  let results = (outs Variadic<HLO_TensorOrToken>);
+  let results = (outs Variadic<HLO_TensorOrPerAxisQuantizedOrToken>);
 
   let hasVerifier = 1;
 
@@ -1501,7 +1501,7 @@ def StableHLO_GetTupleElementOp: StableHLO_Op<"get_tuple_element", [Pure,
     I32Attr:$index /*get_tuple_element_i2*/
   );
 
-  let results = (outs HLO_TensorOrTokenOrTuple);
+  let results = (outs HLO_TensorOrPerAxisQuantizedOrTokenOrTuple);
 
   let assemblyFormat = [{
     $operand `[` $index `]` attr-dict `:` functional-type(operands, results)
@@ -1523,7 +1523,7 @@ def StableHLO_TupleOp : StableHLO_Op<"tuple", [Pure,
     ```
    }];
 
-  let arguments = (ins Variadic<HLO_TensorOrTokenOrTuple>:$val /*tuple_i1*/);
+  let arguments = (ins Variadic<HLO_TensorOrPerAxisQuantizedOrTokenOrTuple>:$val /*tuple_i1*/);
   let results = (outs HLO_Tuple:$result);
 
   let assemblyFormat = [{
@@ -1812,8 +1812,8 @@ def StableHLO_BitcastConvertOp : StableHLO_ShapedInterfaceOp<"bitcast_convert",
     ```
   }];
 
-  let arguments = (ins HLO_TensorOrPerAxisQuantized:$operand /*bitcast_convert_i1*/);
-  let results = (outs HLO_TensorOrPerAxisQuantized);
+  let arguments = (ins HLO_TensorOrPerAxisQuantizedTensor:$operand /*bitcast_convert_i1*/);
+  let results = (outs HLO_TensorOrPerAxisQuantizedTensor);
   let hasVerifier = 1;
 
   let assemblyFormat = "operands attr-dict `:` functional-type(operands, results)";
@@ -1863,11 +1863,11 @@ def StableHLO_BroadcastInDimOp : StableHLO_Op<"broadcast_in_dim",
     ```
   }];
   let arguments = (ins
-    HLO_TensorOrPerAxisQuantized:$operand /*broadcast_in_dim_i1*/,
+    HLO_TensorOrPerAxisQuantizedTensor:$operand /*broadcast_in_dim_i1*/,
     DenseI64ArrayAttr:$broadcast_dimensions /*broadcast_in_dim_i2*/
   );
 
-  let results = (outs HLO_StaticShapeOrQuantizedPerAxis);
+  let results = (outs HLO_StaticShapeTensorOrPerAxisQuantizedTensor);
 
   let hasVerifier = 1;
 
@@ -2110,11 +2110,11 @@ def StableHLO_ConvolutionOp : StableHLO_Op<"convolution", [Pure]> {
   }];
   let arguments = !con(
     (ins
-       HLO_TensorOrPerAxisQuantized:$lhs,
-       HLO_TensorOrPerAxisQuantized:$rhs),
+       HLO_Tensor:$lhs,
+       HLO_TensorOrPerAxisQuantizedTensor:$rhs),
     StableHLO_ConvolutionAttributes.attributes);
 
-  let results = (outs HLO_TensorOrPerAxisQuantized);
+  let results = (outs HLO_TensorOrPerAxisQuantizedTensor);
   let hasVerifier = 1;
 
   let extraClassDeclaration = [{
@@ -2226,10 +2226,10 @@ def StableHLO_DotOp: StableHLO_Op<"dot", [Pure]> {
   }];
   let arguments = (
     ins HLO_Tensor:$lhs,
-    HLO_TensorOrPerAxisQuantized:$rhs,
+    HLO_TensorOrPerAxisQuantizedTensor:$rhs,
     StableHLO_PrecisionConfigAttr:$precision_config
   );
-  let results = (outs HLO_TensorOrPerAxisQuantized);
+  let results = (outs HLO_TensorOrPerAxisQuantizedTensor);
   let hasVerifier = 1;
 
   // Use empty `` to prevent extra whitespace before precision config.
@@ -2259,12 +2259,12 @@ def StableHLO_DotGeneralOp: StableHLO_ShapedInterfaceOp<"dot_general", [Pure]> {
   }];
   let arguments = (ins
     HLO_Tensor:$lhs /*dot_general_i1*/,
-    HLO_TensorOrPerAxisQuantized:$rhs /*dot_general_i2*/,
+    HLO_TensorOrPerAxisQuantizedTensor:$rhs /*dot_general_i2*/,
     StableHLO_DotDimensionNumbers:$dot_dimension_numbers /*dot_general_i3, dot_general_i4, dot_general_i5, dot_general_i6*/,
     StableHLO_PrecisionConfigAttr:$precision_config /*dot_general_i7*/
   );
 
-  let results = (outs HLO_TensorOrPerAxisQuantized);
+  let results = (outs HLO_TensorOrPerAxisQuantizedTensor);
   let hasVerifier = 1;
 
   // Use empty `` to prevent extra whitespace before precision config.
@@ -2354,7 +2354,7 @@ def StableHLO_FftOp: StableHLO_Op<"fft", [InferTensorType, Pure]> {
     DenseI64ArrayAttr:$fft_length
   );
 
-  let results = (outs HLO_Tensor);
+  let results = (outs HLO_FpOrComplexTensor);
 
   let assemblyFormat = [{
     $operand `,` `type` `=` $fft_type `,` `length` `=` $fft_length
@@ -2470,9 +2470,9 @@ def StableHLO_ReshapeOp: StableHLO_Op<"reshape",
     ```
   }];
 
-  let arguments = (ins HLO_TensorOrPerAxisQuantized:$operand);
+  let arguments = (ins HLO_TensorOrPerAxisQuantizedTensor:$operand);
 
-  let results = (outs HLO_StaticShapeOrQuantizedPerAxis);
+  let results = (outs HLO_StaticShapeTensorOrPerAxisQuantizedTensor);
   let hasVerifier = 1;
 
   let assemblyFormat = "operands attr-dict `:` functional-type(operands, results)";
@@ -2801,10 +2801,10 @@ def StableHLO_TransposeOp: StableHLO_ShapedInterfaceOp<"transpose",
     ```
   }];
   let arguments = (ins
-    HLO_TensorOrPerAxisQuantized:$operand,
+    HLO_TensorOrPerAxisQuantizedTensor:$operand,
     DenseI64ArrayAttr:$permutation
   );
-  let results = (outs HLO_TensorOrPerAxisQuantized);
+  let results = (outs HLO_TensorOrPerAxisQuantizedTensor);
 
   let assemblyFormat = [{
     $operand `,` `dims` `=` $permutation
