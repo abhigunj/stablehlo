@@ -159,7 +159,7 @@ def HLO_RankedTensor : RankedTensorOf<[HLO_Float, HLO_Pred, HLO_Int, HLO_Complex
 
 def HLO_ComplexTensor : TensorOf<[HLO_Complex]>;
 
-def HLO_Tuple : NestedTupleOf<[HLO_Tensor, HLO_Token]>;
+def HLO_Tuple : NestedTupleOf<[HLO_Tensor, HLO_PerAxisQuantizedIntTensor, HLO_Token]>;
 
 def HLO_TensorOrToken : AnyTypeOf<[HLO_Tensor, HLO_Token]>;
 

@@ -2182,7 +2182,7 @@ def StableHLO_CustomCallOp: StableHLO_Op<"custom_call",
   }];
 
   let arguments = (ins
-    Variadic<HLO_TensorOrTokenOrTuple>:$inputs,
+    Variadic<HLO_TensorOrPerAxisQuantizedOrTokenOrTuple>:$inputs,
     StrAttr:$call_target_name,
     DefaultValuedOptionalAttr<BoolAttr, "false">:$has_side_effect,
     DefaultValuedStrAttr<StrAttr, "">:$backend_config,
@@ -2201,7 +2201,7 @@ def StableHLO_CustomCallOp: StableHLO_Op<"custom_call",
             "Aliasing attribute for outputs and operands of CustomCall">,
         "{}">:$output_operand_aliases
   );
-  let results = (outs Variadic<HLO_TensorOrTokenOrTuple>);
+  let results = (outs Variadic<HLO_TensorOrPerAxisQuantizedOrTokenOrTuple>);
   let hasVerifier = 1;
 
   let assemblyFormat = [{
