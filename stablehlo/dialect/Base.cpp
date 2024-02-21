@@ -66,7 +66,9 @@ LogicalResult verifyCompatibleShapeWithBounds(Type type1, Type type2) {
   }
   return success();
 }
-
+//    tp1         tp2                 Result
+//   Quantized    Non Quantized        false
+//   ....
 bool isCompatibleElementTypeForHloTypeInference(Type tp1, Type tp2) {
   // Get element type if shaped
   tp1 = getElementTypeOrSelf(tp1);
@@ -78,34 +80,36 @@ bool isCompatibleElementTypeForHloTypeInference(Type tp1, Type tp2) {
   // Individual ops may introduce additional constraints.
   auto qtp1 = tp1.dyn_cast<quant::QuantizedType>();
   auto qtp2 = tp2.dyn_cast<quant::QuantizedType>();
-  if (qtp1 && qtp2) {
-    if (qtp1.getStorageType() != qtp2.getStorageType() ||
-        qtp1.getStorageTypeMin() != qtp2.getStorageTypeMin() ||
-        qtp1.getStorageTypeMax() != qtp2.getStorageTypeMax())
-      return false;
+  if(!(qtp1 && qtp2)){
+    // one Q and another non Q
+    if (qtp1 || qtp2) return false;
 
-    auto qpatp1 = tp1.dyn_cast<quant::UniformQuantizedPerAxisType>();
-    auto qpatp2 = tp2.dyn_cast<quant::UniformQuantizedPerAxisType>();
-    if (qpatp1 && qpatp2) {
-      if(qpatp1.getQuantizedDimension() != qpatp2.getQuantizedDimension())
-        return false;
-    }
-  } 
-  //if((qtp1 == NULL && qtp2 != NULL) || (qtp1 != NULL && qtp2 == NULL)) return false;
+    // Sparsity: In the most general case, we allow any combination of
+    // sparsity/denseness across any combination of operands/results, as well as
+    // differences in sparsity encodings for operands and results.
+    // Individual ops may introduce additional constraints.
+    // No additional code is needed to check this because of how sparsity is
+    // currently implemented.
 
-  auto etp1 = getExpressedTypeOrSelf(tp1);
-  auto etp2 = getExpressedTypeOrSelf(tp2);
+    // Default case: Unless dynamism, quantization and/or sparsity are involved,
+    // the types are required to be exactly equal.
+    
+    auto etp1 = getExpressedTypeOrSelf(tp1);
+    auto etp2 = getExpressedTypeOrSelf(tp2);
+    return etp1 == etp2;
+  }
+  if (qtp1.getStorageType() != qtp2.getStorageType() ||
+      qtp1.getStorageTypeMin() != qtp2.getStorageTypeMin() ||
+      qtp1.getStorageTypeMax() != qtp2.getStorageTypeMax())
+    return false;
 
-  // Sparsity: In the most general case, we allow any combination of
-  // sparsity/denseness across any combination of operands/results, as well as
-  // differences in sparsity encodings for operands and results.
-  // Individual ops may introduce additional constraints.
-  // No additional code is needed to check this because of how sparsity is
-  // currently implemented.
-
-  // Default case: Unless dynamism, quantization and/or sparsity are involved,
-  // the types are required to be exactly equal.
-  return etp1 == etp2;
+  auto qpatp1 = tp1.dyn_cast<quant::UniformQuantizedPerAxisType>();
+  auto qpatp2 = tp2.dyn_cast<quant::UniformQuantizedPerAxisType>();
+  if (qpatp1 && qpatp2) {
+    if(qpatp1.getQuantizedDimension() != qpatp2.getQuantizedDimension())
+    return false;
+  }
+  return true;
 }
 
 bool isCompatibleForHloTypeInference(Type tp1, Type tp2) {
