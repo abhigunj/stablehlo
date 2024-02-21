@@ -1847,7 +1847,7 @@ def StableHLO_BroadcastOp : StableHLO_ShapedInterfaceOp<"broadcast",
 }
 
 def StableHLO_BroadcastInDimOp : StableHLO_Op<"broadcast_in_dim",
-      [Pure, HLO_CompatibleOperandsAndResultElementType /*broadcast_in_dim_c1*/]> {
+      [Pure, /*can't use the Trait, need updates to verifierHLO_CompatibleOperandsAndResultElementType*/ /*broadcast_in_dim_c1*/]> {
   let summary = "BroadcastInDim operation";
   let description = [{
     Expands the dimensions and/or rank of an input tensor by duplicating the
@@ -1926,7 +1926,7 @@ def StableHLO_DynamicBroadcastInDimOp : StableHLO_ShapedInterfaceOp<
 // directly.
 
 def StableHLO_CholeskyOp : StableHLO_Op<"cholesky",
-      [Pure, SameOperandsAndResultElementType /*cholesky_c1*/,
+      [Pure, HLO_CompatibleOperandsAndResultElementType /*cholesky_c1*/,
        InferTensorType /*cholesky_c1*/]> {
   let summary = "Cholesky operation";
   let description = [{
@@ -1953,7 +1953,7 @@ def StableHLO_CholeskyOp : StableHLO_Op<"cholesky",
 }
 
 def StableHLO_ClampOp : StableHLO_ShapedInterfaceOp<"clamp", [Pure,
-  SameOperandsAndResultElementType /* clamp_c3 */, HLO_BroadcastingElementwise,
+  HLO_CompatibleOperandsAndResultElementType  /* clamp_c3 */, HLO_BroadcastingElementwise,
   InferTensorType]> {
   let summary = "Clamp operation";
   let description = [{
@@ -2455,7 +2455,7 @@ def StableHLO_MapOp: StableHLO_ShapedInterfaceOp<"map",
 }
 
 def StableHLO_ReshapeOp: StableHLO_Op<"reshape",
-      [Pure, HLO_CompatibleOperandsAndResultElementType]> {
+      [Pure, /* can't use the Trait, need verifier updatesHLO_CompatibleOperandsAndResultElementType*/]> {
   let summary = "Reshape operation";
   let description = [{
     Performs reshape of `operand` tensor to a `result` tensor.
@@ -2784,7 +2784,7 @@ def StableHLO_TraceOp: StableHLO_Op<"trace", []> {
 }
 
 def StableHLO_TransposeOp: StableHLO_ShapedInterfaceOp<"transpose",
-      [Pure, HLO_CompatibleOperandsAndResultElementType,
+      [Pure, /* can't use the Trait, need verifier to handle per-axis HLO_CompatibleOperandsAndResultElementType,*/
       DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
   let summary = "Transpose operation";
   let description = [{

@@ -83,7 +83,16 @@ bool isCompatibleElementTypeForHloTypeInference(Type tp1, Type tp2) {
         qtp1.getStorageTypeMin() != qtp2.getStorageTypeMin() ||
         qtp1.getStorageTypeMax() != qtp2.getStorageTypeMax())
       return false;
-  }
+
+    auto qpatp1 = tp1.dyn_cast<quant::UniformQuantizedPerAxisType>();
+    auto qpatp2 = tp2.dyn_cast<quant::UniformQuantizedPerAxisType>();
+    if (qpatp1 && qpatp2) {
+      if(qpatp1.getQuantizedDimension() != qpatp2.getQuantizedDimension())
+        return false;
+    }
+  } 
+  //if((qtp1 == NULL && qtp2 != NULL) || (qtp1 != NULL && qtp2 == NULL)) return false;
+
   auto etp1 = getExpressedTypeOrSelf(tp1);
   auto etp2 = getExpressedTypeOrSelf(tp2);
 
