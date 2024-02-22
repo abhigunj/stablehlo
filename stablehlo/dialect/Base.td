@@ -73,7 +73,7 @@ class StableHLO_UniformQuantizedUnsignedInt<int width>
            CPred<"!$_self.cast<mlir::quant::UniformQuantizedType>()" #
                  ".isSigned()">]>,
     "QUI" # width # " type"> {
-  string name = "UniformQuantizedPerAxisUnsignedInt";
+  string name = "UniformQuantizedUnsignedInt";
   int bitwidth = width;
 }
 
@@ -84,7 +84,7 @@ class StableHLO_UniformQuantizedPerAxisUnsignedInt<int width>
            CPred<"!$_self.cast<mlir::quant::UniformQuantizedPerAxisType>()" #
                  ".isSigned()">]>,
     "QUI" # width # " type"> {
-  string name = "UniformQuantizedUnsignedInt";
+  string name = "UniformQuantizedPerAxisUnsignedInt";
   int bitwidth = width;
 }
 
