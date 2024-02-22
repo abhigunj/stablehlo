@@ -66,50 +66,47 @@ LogicalResult verifyCompatibleShapeWithBounds(Type type1, Type type2) {
   }
   return success();
 }
-//    tp1         tp2                 Result
-//   Quantized    Non Quantized        false
-//   ....
+
+// Q: Quantized (per-tensor or per-axis)
+// NQ: Non Quantized
+//      tp1           tp2           Result
+// NQ             NQ              true/false
+// NQ             Q               false
+// Q(per-tensor)  Q(per-tensor)   true/false
+// Q(per-tensor)  Q(per-axis)     false
+// Q(per-axis)    Q(per-axis)     true/false
+
 bool isCompatibleElementTypeForHloTypeInference(Type tp1, Type tp2) {
   // Get element type if shaped
   tp1 = getElementTypeOrSelf(tp1);
   tp2 = getElementTypeOrSelf(tp2);
 
-  // Quantization: In the most general case, we allow any combination of
-  // quantized/non-quantized across any combination of operands/results,
-  // and some differences in quantization parameters across operands/results.
-  // Individual ops may introduce additional constraints.
   auto qtp1 = tp1.dyn_cast<quant::QuantizedType>();
   auto qtp2 = tp2.dyn_cast<quant::QuantizedType>();
-  if(!(qtp1 && qtp2)){
-    // one Q and another non Q
-    if (qtp1 || qtp2) return false;
-
-    // Sparsity: In the most general case, we allow any combination of
-    // sparsity/denseness across any combination of operands/results, as well as
-    // differences in sparsity encodings for operands and results.
-    // Individual ops may introduce additional constraints.
-    // No additional code is needed to check this because of how sparsity is
-    // currently implemented.
-
-    // Default case: Unless dynamism, quantization and/or sparsity are involved,
-    // the types are required to be exactly equal.
-    
-    auto etp1 = getExpressedTypeOrSelf(tp1);
-    auto etp2 = getExpressedTypeOrSelf(tp2);
-    return etp1 == etp2;
+  
+  // If both are non quantized
+  if (!qtp1 && !qtp2) {
+    return tp1 == tp2;
   }
-  if (qtp1.getStorageType() != qtp2.getStorageType() ||
-      qtp1.getStorageTypeMin() != qtp2.getStorageTypeMin() ||
-      qtp1.getStorageTypeMax() != qtp2.getStorageTypeMax())
-    return false;
+  // If both are per-tensor Quantized
+  if (qtp1 && qtp2) {
+    if (qtp1.getStorageType() != qtp2.getStorageType() ||
+        qtp1.getStorageTypeMin() != qtp2.getStorageTypeMin() ||
+        qtp1.getStorageTypeMax() != qtp2.getStorageTypeMax() || 
+        qtp1.getExpressedType() != qtp2.getExpressedType()){
+      return false;
+    }
 
-  auto qpatp1 = tp1.dyn_cast<quant::UniformQuantizedPerAxisType>();
-  auto qpatp2 = tp2.dyn_cast<quant::UniformQuantizedPerAxisType>();
-  if (qpatp1 && qpatp2) {
-    if(qpatp1.getQuantizedDimension() != qpatp2.getQuantizedDimension())
-    return false;
+    auto qpatp1 = qtp1.dyn_cast<quant::UniformQuantizedPerAxisType>();
+    auto qpatp2 = qtp2.dyn_cast<quant::UniformQuantizedPerAxisType>();
+    // If both are also per-axis quantized
+    if(qpatp1 && qpatp2){
+      return qpatp1.getQuantizedDimension() == qpatp2.getQuantizedDimension();
+    }
+    return !(qpatp1 || qpatp2);
   }
-  return true;
+ 
+  return false;
 }
 
 bool isCompatibleForHloTypeInference(Type tp1, Type tp2) {
