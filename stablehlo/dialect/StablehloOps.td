@@ -1004,7 +1004,7 @@ def StableHLO_InfeedOp : StableHLO_Op<"infeed"> {
     DefaultValuedStrAttr<StrAttr, "">:$infeed_config, /*infeed_i2*/
     OptionalAttr<ArrayAttr>:$layout
   );
-  let results = (outs Variadic<HLO_StaticShapeTensorOrPerAxisQuantizedOrToken>);
+  let results = (outs Variadic<HLO_StaticShapeTensorOrPerAxisQuantizedTensorOrToken>);
   let hasVerifier = 1;
 }
 
@@ -1083,7 +1083,7 @@ def StableHLO_RecvOp : StableHLO_Op<"recv"> {
     DefaultValuedOptionalAttr<BoolAttr, "false">:$is_host_transfer /*recv_i4*/
   );
 
-  let results = (outs Variadic<HLO_StaticShapeTensorOrPerAxisQuantizedOrToken>);
+  let results = (outs Variadic<HLO_StaticShapeTensorOrPerAxisQuantizedTensorOrToken>);
   let hasVerifier = 1;
 }
 
@@ -1188,7 +1188,7 @@ def StableHLO_IfOp: StableHLO_Op<"if", [
   let regions = (region SizedRegion<1>:$true_branch /*if_i2*/,
                         SizedRegion<1>:$false_branch /*if_i3*/);
 
-  let results = (outs Variadic<HLO_TensorOrPerAxisQuantizedOrToken>);
+  let results = (outs Variadic<HLO_TensorOrPerAxisQuantizedTensorOrToken>);
 }
 
 // Xla Client API has two separate calls for indexed and predicated conditional,
@@ -1223,7 +1223,7 @@ def StableHLO_CaseOp: StableHLO_Op<"case", [
 
   let regions = (region VariadicRegion<SizedRegion<1>>:$branches /*case_i2*/);
 
-  let results = (outs Variadic<HLO_TensorOrPerAxisQuantizedOrToken>);
+  let results = (outs Variadic<HLO_TensorOrPerAxisQuantizedTensorOrToken>);
 }
 
 
@@ -1254,14 +1254,14 @@ def StableHLO_WhileOp: StableHLO_Op<"while", [
     }
     ```
   }];
-  let arguments = (ins Variadic<HLO_TensorOrPerAxisQuantizedOrToken>:$operand /*while_i1*/);
+  let arguments = (ins Variadic<HLO_TensorOrPerAxisQuantizedTensorOrToken>:$operand /*while_i1*/);
 
   let regions = (region
     SizedRegion<1>:$cond /*while_i2*/,
     SizedRegion<1>:$body /*while_i3*/
   );
 
-  let results = (outs Variadic<HLO_TensorOrPerAxisQuantizedOrToken>);
+  let results = (outs Variadic<HLO_TensorOrPerAxisQuantizedTensorOrToken>);
 
   let hasVerifier = 1;
 
@@ -1501,7 +1501,7 @@ def StableHLO_GetTupleElementOp: StableHLO_Op<"get_tuple_element", [Pure,
     I32Attr:$index /*get_tuple_element_i2*/
   );
 
-  let results = (outs HLO_TensorOrPerAxisQuantizedOrTokenOrTuple);
+  let results = (outs HLO_TensorOrPerAxisQuantizedTensorOrTokenOrTuple);
 
   let assemblyFormat = [{
     $operand `[` $index `]` attr-dict `:` functional-type(operands, results)
@@ -1523,7 +1523,7 @@ def StableHLO_TupleOp : StableHLO_Op<"tuple", [Pure,
     ```
    }];
 
-  let arguments = (ins Variadic<HLO_TensorOrPerAxisQuantizedOrTokenOrTuple>:$val /*tuple_i1*/);
+  let arguments = (ins Variadic<HLO_TensorOrPerAxisQuantizedTensorOrTokenOrTuple>:$val /*tuple_i1*/);
   let results = (outs HLO_Tuple:$result);
 
   let assemblyFormat = [{
@@ -1839,7 +1839,7 @@ def StableHLO_BroadcastOp : StableHLO_ShapedInterfaceOp<"broadcast",
     DenseI64ArrayAttr:$broadcast_sizes
   );
 
-  let results = (outs HLO_Tensor);
+  let results = (outs HLO_TensorOrPerAxisQuantizedTensor);
 
   let assemblyFormat = [{
     $operand `,` `sizes` `=` $broadcast_sizes
@@ -2182,7 +2182,7 @@ def StableHLO_CustomCallOp: StableHLO_Op<"custom_call",
   }];
 
   let arguments = (ins
-    Variadic<HLO_TensorOrPerAxisQuantizedOrTokenOrTuple>:$inputs,
+    Variadic<HLO_TensorOrPerAxisQuantizedTensorOrTokenOrTuple>:$inputs,
     StrAttr:$call_target_name,
     DefaultValuedOptionalAttr<BoolAttr, "false">:$has_side_effect,
     DefaultValuedStrAttr<StrAttr, "">:$backend_config,
@@ -2201,7 +2201,7 @@ def StableHLO_CustomCallOp: StableHLO_Op<"custom_call",
             "Aliasing attribute for outputs and operands of CustomCall">,
         "{}">:$output_operand_aliases
   );
-  let results = (outs Variadic<HLO_TensorOrPerAxisQuantizedOrTokenOrTuple>);
+  let results = (outs Variadic<HLO_TensorOrPerAxisQuantizedTensorOrTokenOrTuple>);
   let hasVerifier = 1;
 
   let assemblyFormat = [{

@@ -108,14 +108,14 @@ class StableHLO_UniformQuantizedPerAxisUnsignedIntOfWidths<list<int> widths> :
               !interleave(widths, "/") # "-bit uniform quantized per axis unsigned " #
               "integer">;
 
-// Integer-based uniform per tensor quantized types. The definitions can be used to specify
+// Integer-based uniform per-tensor quantized types. The definitions can be used to specify
 // operand's tensor types.
 def HLO_QuantizedSignedInt : StableHLO_UniformQuantizedSignedIntOfWidths<[4, 8, 16, 32]>;
 def HLO_QuantizedUnsignedInt : StableHLO_UniformQuantizedUnsignedIntOfWidths<[4, 8, 16, 32]>;
 def HLO_QuantizedInt :
     AnyTypeOf<[HLO_QuantizedSignedInt, HLO_QuantizedUnsignedInt]>;
 
-// Integer-based uniform per axis quantized types. The definitions can be used to specify
+// Integer-based uniform per-axis quantized types. The definitions can be used to specify
 // operand's tensor types.
 def HLO_PerAxisQuantizedSignedInt : StableHLO_UniformQuantizedPerAxisSignedIntOfWidths<[4, 8, 16, 32]>;
 def HLO_PerAxisQuantizedUnsignedInt : StableHLO_UniformQuantizedPerAxisUnsignedIntOfWidths<[4, 8, 16, 32]>;
@@ -137,13 +137,13 @@ def HLO_FpTensor : TensorOf<[HLO_Float]>;
 // 32 or 64 bits floating-point tensor types
 def HLO_Fp32Or64Tensor : TensorOf<[HLO_Float32Or64]>;
 
-// Per tensor quantized integer tensor types
+// per-tensor quantized integer tensor types
 def HLO_QuantizedIntTensor : TensorOf<[HLO_QuantizedInt]>;
 
-// Per axis quantized integer tensor type
+// per-axis quantized integer tensor type
 def HLO_PerAxisQuantizedIntTensor : TensorOf<[HLO_PerAxisQuantizedInt]>;
 
-// Per tensor or per axis quantized integer tensor type
+// per-tensor or per-axis quantized integer tensor type
 def HLO_QuantizedIntOrPerAxisQuantizedIntTensor : TensorOf<[HLO_QuantizedInt, HLO_PerAxisQuantizedInt]>;
 
 def HLO_PredTensor : TensorOf<[HLO_Pred]>;
@@ -163,11 +163,11 @@ def HLO_Tuple : NestedTupleOf<[HLO_Tensor, HLO_PerAxisQuantizedIntTensor, HLO_To
 
 def HLO_TensorOrToken : AnyTypeOf<[HLO_Tensor, HLO_Token]>;
 
-def HLO_TensorOrPerAxisQuantizedOrToken : AnyTypeOf<[HLO_Tensor, HLO_PerAxisQuantizedIntTensor, HLO_Token]>;
+def HLO_TensorOrPerAxisQuantizedTensorOrToken : AnyTypeOf<[HLO_Tensor, HLO_PerAxisQuantizedIntTensor, HLO_Token]>;
 
 def HLO_TensorOrTokenOrTuple : AnyTypeOf<[HLO_Tensor, HLO_Token, HLO_Tuple]>;
 
-def HLO_TensorOrPerAxisQuantizedOrTokenOrTuple : AnyTypeOf<[HLO_Tensor, HLO_PerAxisQuantizedIntTensor, HLO_Token, HLO_Tuple]>;
+def HLO_TensorOrPerAxisQuantizedTensorOrTokenOrTuple : AnyTypeOf<[HLO_Tensor, HLO_PerAxisQuantizedIntTensor, HLO_Token, HLO_Tuple]>;
 
 def HLO_DimensionValue : AnyTypeOf<[Index, HLO_Int]>;
 
@@ -221,7 +221,7 @@ def HLO_StaticShapeTensor : StaticShapeTensorOf<[
 def HLO_StaticShapeTensorOrPerAxisQuantizedTensor : StaticShapeTensorOf<[
       HLO_Float, HLO_Pred, HLO_Int, HLO_Complex, HLO_QuantizedInt, HLO_PerAxisQuantizedInt]>;
 
-def HLO_StaticShapeTensorOrPerAxisQuantizedOrToken : AnyTypeOf<[HLO_StaticShapeTensor, HLO_PerAxisQuantizedIntTensor, HLO_Token]>;
+def HLO_StaticShapeTensorOrPerAxisQuantizedTensorOrToken : AnyTypeOf<[HLO_StaticShapeTensor, HLO_StaticShapeTensorOrPerAxisQuantizedTensor, HLO_Token]>;
 
 def HLO_StaticShapeIntOrFpTensor : StaticShapeTensorOf<[HLO_Int, HLO_Float]>;
 
