@@ -70,11 +70,11 @@ LogicalResult verifyCompatibleShapeWithBounds(Type type1, Type type2) {
 // Q: Quantized (per-tensor or per-axis)
 // NQ: Non Quantized
 //      tp1           tp2           Result
-// NQ             NQ              true/false
+// NQ             NQ              tp1 == tp2
 // NQ             Q               false
-// Q(per-tensor)  Q(per-tensor)   true/false
+// Q              Q               tp1.storage_type() == tp2.storage_type() || .. 
+// Q(per-axis)    Q(per-axis)     tp1.quantized_dimension() == ...
 // Q(per-tensor)  Q(per-axis)     false
-// Q(per-axis)    Q(per-axis)     true/false
 
 bool isCompatibleElementTypeForHloTypeInference(Type tp1, Type tp2) {
   // Get element type if shaped
@@ -83,13 +83,13 @@ bool isCompatibleElementTypeForHloTypeInference(Type tp1, Type tp2) {
 
   auto qtp1 = tp1.dyn_cast<quant::QuantizedType>();
   auto qtp2 = tp2.dyn_cast<quant::QuantizedType>();
-  
-  // If both are non quantized
+
   if (!qtp1 && !qtp2) {
+    // Both are non quantized
     return tp1 == tp2;
   }
-  // If both are per-tensor Quantized
   if (qtp1 && qtp2) {
+    // Both are quantized
     if (qtp1.getStorageType() != qtp2.getStorageType() ||
         qtp1.getStorageTypeMin() != qtp2.getStorageTypeMin() ||
         qtp1.getStorageTypeMax() != qtp2.getStorageTypeMax() || 
@@ -99,13 +99,15 @@ bool isCompatibleElementTypeForHloTypeInference(Type tp1, Type tp2) {
 
     auto qpatp1 = qtp1.dyn_cast<quant::UniformQuantizedPerAxisType>();
     auto qpatp2 = qtp2.dyn_cast<quant::UniformQuantizedPerAxisType>();
-    // If both are also per-axis quantized
     if(qpatp1 && qpatp2){
+      // Both are also per-axis quantized
       return qpatp1.getQuantizedDimension() == qpatp2.getQuantizedDimension();
     }
+    // return true if both are per-tensor quantized
     return !(qpatp1 || qpatp2);
+    return true;
   }
- 
+
   return false;
 }
 
