@@ -67,15 +67,6 @@ LogicalResult verifyCompatibleShapeWithBounds(Type type1, Type type2) {
   return success();
 }
 
-// Q: Quantized (per-tensor or per-axis)
-// NQ: Non Quantized
-//      tp1           tp2           Result
-// NQ             NQ              tp1 == tp2
-// NQ             Q               false
-// Q              Q               tp1.storage_type() == tp2.storage_type() || .. 
-// Q(per-axis)    Q(per-axis)     tp1.quantized_dimension() == ...
-// Q(per-tensor)  Q(per-axis)     false
-
 bool isCompatibleElementTypeForHloTypeInference(Type tp1, Type tp2) {
   // Get element type if shaped
   tp1 = getElementTypeOrSelf(tp1);
@@ -101,11 +92,11 @@ bool isCompatibleElementTypeForHloTypeInference(Type tp1, Type tp2) {
     auto qpatp2 = qtp2.dyn_cast<quant::UniformQuantizedPerAxisType>();
     if(qpatp1 && qpatp2){
       // Both are also per-axis quantized
-      return qpatp1.getQuantizedDimension() == qpatp2.getQuantizedDimension();
+      // For now, don't match dimentions, Per OP verifier will do it.
+      return true;
     }
     // return true if both are per-tensor quantized
     return !(qpatp1 || qpatp2);
-    return true;
   }
 
   return false;
