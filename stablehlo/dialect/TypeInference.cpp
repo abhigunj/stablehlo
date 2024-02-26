@@ -3723,6 +3723,25 @@ LogicalResult verifyRealDynamicSliceOp(std::optional<Location> location,
   return success();
 }
 
+LogicalResult verifyAddOp(std::optional<Location> location, Value lhs, Value rhs, Value result) {
+  auto lhsType = lhs.getType().dyn_cast<quant::UniformQuantizedPerAxisType>();
+  auto rhsType = rhs.getType().dyn_cast<quant::UniformQuantizedPerAxisType>();
+
+  if(lhsType || rhsType){
+    auto resultType = result.getType().dyn_cast<quant::UniformQuantizedPerAxisType>();
+    if (!resultType)
+      return emitOptionalError(
+        location, "has mismatched input and result type");
+
+    auto dim = (lhsType) ? lhsType.getQuantizedDimension() : rhsType.getQuantizedDimension();
+    if (resultType.getQuantizedDimension() != dim){
+      return emitOptionalError(
+        location, "has mismatched input and result type");
+    }
+  }
+  return success();
+}
+
 LogicalResult verifyRecvOp(HloDialectInterface* dialect,
                            std::optional<Location> location,
                            bool isDeviceToDevice, bool isHostToDevice,

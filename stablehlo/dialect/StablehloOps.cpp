@@ -196,6 +196,15 @@ INFER_RETURN_TYPE_COMPONENTS_FROM_OPERANDS(SubtractOp)
 INFER_RETURN_TYPE_COMPONENTS_FROM_OPERANDS(TanhOp)
 INFER_RETURN_TYPE_COMPONENTS_FROM_OPERANDS(XorOp)
 
+
+//===----------------------------------------------------------------------===//
+// AddOp
+//===----------------------------------------------------------------------===//
+
+LogicalResult AddOp::verify() {
+  return hlo::verifyAddOp(getLoc(), getLhs(), getRhs(), getResult());
+}
+
 //===----------------------------------------------------------------------===//
 // AfterAllOp
 //===----------------------------------------------------------------------===//
