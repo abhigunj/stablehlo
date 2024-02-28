@@ -3300,6 +3300,14 @@ LogicalResult verifyBroadcastInDimOp(std::optional<Location> location,
             resultDimSize, ")");
     }
   }
+  
+  // broadcast_in_dim_c6
+  if(auto resultQuantType = result.getType().dyn_cast<quant::UniformQuantizedPerAxisType>()){
+    auto operandQuantDim = operandType.dyn_cast<quant::UniformQuantizedPerAxisType>().getQuantizedDimension();
+    if(resultQuantType.getQuantizedDimension() != broadcastDimensions[operandQuantDim])
+      return emitOptionalError(
+            location, "For Per-Axis quantized dimensions of result not matching");
+  }
 
   return success();
 }
@@ -3735,6 +3743,21 @@ LogicalResult verifyAddOp(std::optional<Location> location, Value lhs, Value rhs
 
     auto dim = (lhsType) ? lhsType.getQuantizedDimension() : rhsType.getQuantizedDimension();
     if (resultType.getQuantizedDimension() != dim){
+      return emitOptionalError(
+        location, "has mismatched input and result type");
+    }
+  }
+  return success();
+}
+
+LogicalResult verifyTransposeOp(std::optional<Location> location, 
+                                Value operand,
+                                ArrayRef<int64_t> permutation,
+                                Value result) {
+  
+  if(auto resultQType = operand.getType().dyn_cast<quant::UniformQuantizedPerAxisType>()){
+    auto operandQType = operand.getType().dyn_cast<quant::UniformQuantizedPerAxisType>();
+    if(permutation[resultQType.getQuantizedDimension()] != operandQType.getQuantizedDimension()){
       return emitOptionalError(
         location, "has mismatched input and result type");
     }

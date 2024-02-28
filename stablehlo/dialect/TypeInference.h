@@ -374,7 +374,12 @@ LogicalResult inferWhileOp(std::optional<Location> location, ValueRange operand,
 //===----------------------------------------------------------------------===//
 
 LogicalResult verifyAddOp(std::optional<Location> location, 
-                                Value lhs, Value rhs, Value result);
+                                Value operand, 
+                                Value permutation,
+                                Value result);
+
+LogicalResult verifyTransposeOp(std::optional<Location> location, 
+                                Value operand, ArrayRef<int64_t> permutations, Value result);
 
 LogicalResult verifyAllGatherOp(std::optional<Location> location, Value operand,
                                 int64_t allGatherDim,

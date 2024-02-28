@@ -2457,7 +2457,7 @@ def StableHLO_MapOp: StableHLO_ShapedInterfaceOp<"map",
 }
 
 def StableHLO_ReshapeOp: StableHLO_Op<"reshape",
-      [Pure, HLO_CompatibleOperandsAndResultElementType]> {
+      [Pure, HLO_CompatibleOperandsAndResultElementType /*reshape_c1*/]> {
   let summary = "Reshape operation";
   let description = [{
     Performs reshape of `operand` tensor to a `result` tensor.
@@ -2805,12 +2805,14 @@ def StableHLO_TransposeOp: StableHLO_ShapedInterfaceOp<"transpose",
     HLO_TensorOrPerAxisQuantizedTensor:$operand,
     DenseI64ArrayAttr:$permutation
   );
-  let results = (outs HLO_TensorOrPerAxisQuantizedTensor);
+  let results = (outs HLO_TensorOrPerAxisQuantizedTensor:$result);
 
   let assemblyFormat = [{
     $operand `,` `dims` `=` $permutation
       attr-dict `:` functional-type(operands, results)
   }];
+
+  let hasVerifier = 1;
 }
 
 def StableHLO_TriangularSolveOp: StableHLO_Op<"triangular_solve",
@@ -3227,7 +3229,7 @@ def StableHLO_DynamicPadOp: StableHLO_ShapedInterfaceOp<"dynamic_pad",
 }
 
 def StableHLO_DynamicGatherOp: StableHLO_Op<"dynamic_gather",
-                                [InferTensorTypeWithReify, Pure]> {
+                                [InferTensorTypeWithReify, Pure, AllElementTypesMatch<["operand", "result"]>]> {
   let summary = "DynamicGather operation";
   let description = [{
     This operation is a work in progress, so it is not yet included in
@@ -3257,7 +3259,7 @@ def StableHLO_DynamicGatherOp: StableHLO_Op<"dynamic_gather",
     StableHLO_GatherDimensionNumbers:$dimension_numbers,
     DefaultValuedOptionalAttr<BoolAttr, "false">:$indices_are_sorted
   );
-  let results = (outs HLO_Tensor);
+  let results = (outs HLO_Tensor:$result);
 }
 
 def StableHLO_DynamicConvOp : StableHLO_Op<"dynamic_conv", [Pure]> {
