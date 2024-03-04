@@ -187,6 +187,14 @@ INFER_RETURN_TYPE_COMPONENTS_FROM_OPERANDS(TanhOp)
 INFER_RETURN_TYPE_COMPONENTS_FROM_OPERANDS(XorOp)
 
 //===----------------------------------------------------------------------===//
+// AbsOp
+//===----------------------------------------------------------------------===//
+
+LogicalResult AbsOp::verify() {
+  return hlo::verifyAbsOp(getLoc(), getOperand(), getResult());
+}
+
+//===----------------------------------------------------------------------===//
 // AfterAllOp
 //===----------------------------------------------------------------------===//
 

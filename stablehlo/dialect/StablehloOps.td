@@ -209,6 +209,7 @@ def StableHLO_AbsOp: StableHLO_UnaryElementwiseOp<"abs",
     %result = stablehlo.abs %operand : tensor<3xi32>
     ```
   }];
+  let hasVerifier = 1;
 }
 
 def StableHLO_CbrtOp: StableHLO_UnaryElementwiseOp<"cbrt",
@@ -2692,7 +2693,7 @@ def StableHLO_SortOp : StableHLO_Op<"sort",
 }
 
 def StableHLO_ReverseOp: StableHLO_Op<"reverse",
-      [Pure, HLO_CompatibleOperandsAndResultType /*reverse_c1*/]> {
+      [Pure, InferTensorType /*reverse_c1*/]> {
   let summary = "Reverse operation";
   let description = [{
     Reverses the order of elements in the `operand` along the specified

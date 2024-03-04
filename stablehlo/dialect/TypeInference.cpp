@@ -261,6 +261,43 @@ LogicalResult verifyPairwiseCompatibleShapes(TypeRange values) {
   return success();
 }
 
+LogicalResult verifyAbsOp(std::optional<Location> location, Value operand, Value result) {
+  auto operandType = operand.getType().cast<RankedTensorType>();
+  auto resultType = result.getType().cast<RankedTensorType>();
+  Type operandElementType = operandType.getElementType();
+  // abs_c2
+  if (auto complexTy = operandElementType.dyn_cast<ComplexType>()) {
+    if(complexTy.getElementType() != resultType.getElementType()){
+      return emitOptionalError(
+        location, "has mismatched input and result type");
+    }
+    return success();
+  }
+
+  if(!isCompatibleForHloTypeInference(operandType, resultType))
+    return emitOptionalError(
+        location, "has mismatched input and result type");
+
+  /*
+  auto lhsType = lhs.getType().dyn_cast<quant::UniformQuantizedPerAxisType>();
+  auto rhsType = rhs.getType().dyn_cast<quant::UniformQuantizedPerAxisType>();
+
+  if(lhsType || rhsType){
+    auto resultType = result.getType().dyn_cast<quant::UniformQuantizedPerAxisType>();
+    if (!resultType)
+      return emitOptionalError(
+        location, "has mismatched input and result type");
+
+    auto dim = (lhsType) ? lhsType.getQuantizedDimension() : rhsType.getQuantizedDimension();
+    if (resultType.getQuantizedDimension() != dim){
+      return emitOptionalError(
+        location, "has mismatched input and result type");
+    }
+  }*/
+  return success();
+}
+
+
 LogicalResult verifyBatchNorm(std::optional<Location> location,
                               ValueRange multiDimOperands,
                               ValueRange singleDimOperands,
