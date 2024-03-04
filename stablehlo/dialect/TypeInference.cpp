@@ -3328,6 +3328,14 @@ LogicalResult verifyBroadcastInDimOp(std::optional<Location> location,
             resultDimSize, ")");
     }
   }
+  // broadcast_in_dim_c6
+  if(auto resultQuantType = result.getType().dyn_cast<quant::UniformQuantizedPerAxisType>()){
+    auto operandQuantDim = 
+      operandType.dyn_cast<quant::UniformQuantizedPerAxisType>().getQuantizedDimension();
+    if(resultQuantType.getQuantizedDimension() != broadcastDimensions[operandQuantDim])
+      return emitOptionalError(
+            location, "For Per-Axis quantized dimensions of result not matching");
+  }
 
   return success();
 }
@@ -3748,6 +3756,25 @@ LogicalResult verifyRealDynamicSliceOp(std::optional<Location> location,
     return emitOptionalError(
         location, "has mismatched number of operand rank (", inputRank,
         ") and strides size (", stridesType.getNumElements(), ")");
+  return success();
+}
+
+LogicalResult verifyAddOp(std::optional<Location> location, Value lhs, Value rhs, Value result) {
+  auto lhsType = lhs.getType().dyn_cast<quant::UniformQuantizedPerAxisType>();
+  auto rhsType = rhs.getType().dyn_cast<quant::UniformQuantizedPerAxisType>();
+
+  if(lhsType || rhsType){
+    auto resultType = result.getType().dyn_cast<quant::UniformQuantizedPerAxisType>();
+    if (!resultType)
+      return emitOptionalError(
+        location, "has mismatched input and result type");
+
+    auto dim = (lhsType) ? lhsType.getQuantizedDimension() : rhsType.getQuantizedDimension();
+    if (resultType.getQuantizedDimension() != dim){
+      return emitOptionalError(
+        location, "has mismatched input and result type");
+    }
+  }
   return success();
 }
 
