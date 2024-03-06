@@ -815,3 +815,67 @@ func.func @illegal_storage_type_for_quantized_element_type(%arg0: tensor<4x!quan
   %0 = "stablehlo.uniform_dequantize"(%arg0) : (tensor<4x!quant.uniform<si8:f32, 1.000000e+00>>) -> tensor<4xf32>
   func.return %0 : tensor<4xf32>
 }
+
+// -----
+// convolution_c28
+func.func @quantized_conv2d(%arg0: tensor<1x8x8x207x!quant.uniform<i8:f32, 2.0:15>>, %arg1: tensor<3x3x207x16x!quant.uniform<i8:f32, 5.0:20>>) -> tensor<1x8x8x16x!quant.uniform<i8:f32, 10.0:50>> {
+  %0 = stablehlo.convolution(%arg0, %arg1)
+         dim_numbers = [b, 0, 1, f]x[0, 1, i, o]->[b, 0, 1, f],
+         window = {stride = [1, 1], pad = [[1, 1], [1, 1]], lhs_dilate = [1, 1], rhs_dilate = [1, 1]}
+         {batch_group_count = 1 : i64, feature_group_count = 1 : i64, precision_config = [#stablehlo<precision DEFAULT>, #stablehlo<precision DEFAULT>]} :
+       (tensor<1x8x8x207x!quant.uniform<i8:f32, 2.0:15>>, tensor<3x3x207x16x!quant.uniform<i8:f32, 5.0:20>>) -> tensor<1x8x8x16x!quant.uniform<i8:f32, 10.0:50>>
+  func.return %0 : tensor<1x8x8x16x!quant.uniform<i8:f32, 10.0:50>>
+}
+
+// -----
+
+// convolution_c28
+func.func @quantized_conv2d_mixed_types(%arg0: tensor<1x8x8x207xf32>, %arg1: tensor<3x3x207x16x!quant.uniform<i8:f32, 5.0:20>>) -> tensor<1x8x8x16x!quant.uniform<i8:f32, 10.0:50>> {
+  // expected-error@+1 {{not all inputs and result are quantized}}
+  %0 = stablehlo.convolution(%arg0, %arg1)
+         dim_numbers = [b, 0, 1, f]x[0, 1, i, o]->[b, 0, 1, f],
+         window = {stride = [1, 1], pad = [[1, 1], [1, 1]], lhs_dilate = [1, 1], rhs_dilate = [1, 1]}
+         {batch_group_count = 1 : i64, feature_group_count = 1 : i64, precision_config = [#stablehlo<precision DEFAULT>, #stablehlo<precision DEFAULT>]} :
+       (tensor<1x8x8x207xf32>, tensor<3x3x207x16x!quant.uniform<i8:f32, 5.0:20>>) -> tensor<1x8x8x16x!quant.uniform<i8:f32, 10.0:50>>
+  func.return %0 : tensor<1x8x8x16x!quant.uniform<i8:f32, 10.0:50>>
+}
+
+// -----
+
+// convolution_c29
+func.func @quantized_conv2d(%arg0: tensor<1x8x8x207x!quant.uniform<i16:f32, 2.0:15>>, %arg1: tensor<3x3x207x16x!quant.uniform<i8:f32, 5.0:20>>) -> tensor<1x8x8x16x!quant.uniform<i8:f32, 10.0:50>> {
+  // expected-error@+1 {{mismatched storage types}}
+  %0 = stablehlo.convolution(%arg0, %arg1)
+         dim_numbers = [b, 0, 1, f]x[0, 1, i, o]->[b, 0, 1, f],
+         window = {stride = [1, 1], pad = [[1, 1], [1, 1]], lhs_dilate = [1, 1], rhs_dilate = [1, 1]}
+         {batch_group_count = 1 : i64, feature_group_count = 1 : i64, precision_config = [#stablehlo<precision DEFAULT>, #stablehlo<precision DEFAULT>]} :
+       (tensor<1x8x8x207x!quant.uniform<i16:f32, 2.0:15>>, tensor<3x3x207x16x!quant.uniform<i8:f32, 5.0:20>>) -> tensor<1x8x8x16x!quant.uniform<i8:f32, 10.0:50>>
+  func.return %0 : tensor<1x8x8x16x!quant.uniform<i8:f32, 10.0:50>>
+}
+
+// -----
+
+// convolution_c30
+func.func @quantized_conv2d(%arg0: tensor<1x8x8x207x!quant.uniform<i8:f64, 2.0:15>>, %arg1: tensor<3x3x207x16x!quant.uniform<i8:f32, 5.0:20>>) -> tensor<1x8x8x16x!quant.uniform<i8:f32, 10.0:50>> {
+  // expected-error@+1 {{mismatched expressed types}}
+  %0 = stablehlo.convolution(%arg0, %arg1)
+         dim_numbers = [b, 0, 1, f]x[0, 1, i, o]->[b, 0, 1, f],
+         window = {stride = [1, 1], pad = [[1, 1], [1, 1]], lhs_dilate = [1, 1], rhs_dilate = [1, 1]}
+         {batch_group_count = 1 : i64, feature_group_count = 1 : i64, precision_config = [#stablehlo<precision DEFAULT>, #stablehlo<precision DEFAULT>]} :
+       (tensor<1x8x8x207x!quant.uniform<i8:f64, 2.0:15>>, tensor<3x3x207x16x!quant.uniform<i8:f32, 5.0:20>>) -> tensor<1x8x8x16x!quant.uniform<i8:f32, 10.0:50>>
+  func.return %0 : tensor<1x8x8x16x!quant.uniform<i8:f32, 10.0:50>>
+}
+
+
+// -----
+
+// convolution_c31
+func.func @quantized_conv2d(%arg0: tensor<1x8x8x207x!quant.uniform<i8:f32, 2.0:15>>, %arg1: tensor<3x3x207x16x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<1x8x8x16x!quant.uniform<i8:f32, 10.0:50>> {
+  // expected-error@+1 {{mixed per-tensor and per-axis quantized tensors}}
+  %0 = stablehlo.convolution(%arg0, %arg1)
+         dim_numbers = [b, 0, 1, f]x[0, 1, i, o]->[b, 0, 1, f],
+         window = {stride = [1, 1], pad = [[1, 1], [1, 1]], lhs_dilate = [1, 1], rhs_dilate = [1, 1]}
+         {batch_group_count = 1 : i64, feature_group_count = 1 : i64, precision_config = [#stablehlo<precision DEFAULT>, #stablehlo<precision DEFAULT>]} :
+       (tensor<1x8x8x207x!quant.uniform<i8:f32, 2.0:15>>, tensor<3x3x207x16x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<1x8x8x16x!quant.uniform<i8:f32, 10.0:50>>
+  func.return %0 : tensor<1x8x8x16x!quant.uniform<i8:f32, 10.0:50>>
+}

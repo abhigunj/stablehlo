@@ -3444,7 +3444,36 @@ LogicalResult verifyConvolutionOp(
                              dimSizesToString(inferredShape.getDims()), "' ",
                              "is incompatible with return type of operation ",
                              shapedResultType, "");
-
+  // quantization specific constraints 
+  auto lhsQType = getElementTypeOrSelf(lhsType).dyn_cast<quant::QuantizedType>();
+  auto rhsQType = getElementTypeOrSelf(rhsType).dyn_cast<quant::QuantizedType>();
+  auto resultQType = getElementTypeOrSelf(resultType).dyn_cast<quant::QuantizedType>();
+  if(lhsQType && rhsQType && resultQType) {
+    // convolution_c29
+    if (lhsQType.getStorageType() != rhsQType.getStorageType())
+      return emitOptionalError(location, "mismatched storage types");
+    // convolution_c30
+    auto expressedType = lhsQType.getExpressedType();
+    if (expressedType != rhsQType.getExpressedType() ||
+        expressedType != resultQType.getExpressedType())
+        return emitOptionalError(location, "mismatched expressed types");
+    // convolution_c31
+    auto rhsQPAType = rhsQType.dyn_cast<quant::UniformQuantizedPerAxisType>();
+    auto resultQPAType = resultQType.dyn_cast<quant::UniformQuantizedPerAxisType>();
+    if(!(rhsQPAType == resultQPAType))
+      return emitOptionalError(location, "mixed per-tensor and per-axis quantized tensors");
+    // convolution_c32
+    if(rhsQPAType &&
+        rhsQPAType.getQuantizedDimension() != kernelOutputFeatureDimension)
+        return emitOptionalError(location, "mismatched quantized dimensions");
+    // convolution_c33
+    if(resultQPAType &&
+        resultQPAType.getQuantizedDimension() != kernelOutputFeatureDimension)
+        return emitOptionalError(location, "mismatched quantized dimensions");
+  } else if (lhsQType || rhsQType || resultQType)
+    // convolution_c28
+    return emitOptionalError(location, "not all inputs and result are quantized");
+  
   return success();
 }
 
