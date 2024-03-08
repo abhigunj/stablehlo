@@ -273,7 +273,7 @@ LogicalResult verifyTransposeOp(std::optional<Location> location,
     auto resultQDim = resultQType.getQuantizedDimension();
     auto operandQDim = getElementTypeOrSelf(operandType)
                            .dyn_cast<quant::UniformQuantizedPerAxisType>()
-                           .getQuantizedDimension();                  
+                           .getQuantizedDimension();
     if (operandQDim != permutation[resultQDim])
       return emitOptionalError(location, "operand quantization_dimension ",
                                operandQDim, " is not same as permutation[",
@@ -3477,7 +3477,6 @@ LogicalResult verifyDotGeneralOp(std::optional<Location> location, Value lhs,
     return emitOptionalError(location,
                              "not all of operands and result are quantized");
   }
-     //return success();
   auto lhsQType =
       getElementTypeOrSelf(lhsType).dyn_cast<quant::UniformQuantizedType>();
   auto rhsQType =
@@ -3495,7 +3494,7 @@ LogicalResult verifyDotGeneralOp(std::optional<Location> location, Value lhs,
       expressedType != resultQType.getExpressedType())
     return emitOptionalError(location,
                              "mismatched operands and result expressed types");
-   
+
   // dot_general_c17
   if (rhsQType.getZeroPoint() != 0)
     return emitOptionalError(location, "rhs zero point ",
