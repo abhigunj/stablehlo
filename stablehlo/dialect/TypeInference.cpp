@@ -3566,13 +3566,65 @@ LogicalResult verifyDotGeneralOp(std::optional<Location> location, Value lhs,
     return failure();
 
   auto inferredShape = inferredReturnShapes[0];
-  auto resultType = result.getType().cast<ShapedType>();
-  if (inferredShape.hasRank() && resultType.hasRank() &&
+  auto resultShapeType = result.getType().cast<ShapedType>();
+  if (inferredShape.hasRank() && resultShapeType.hasRank() &&
       failed(verifyCompatibleShape(inferredShape.getDims(),
-                                   resultType.getShape())))
-    return emitOptionalError(
-        location, "inferred shape '", dimSizesToString(inferredShape.getDims()),
-        "' ", "is incompatible with return type of operation ", resultType, "");
+                                   resultShapeType.getShape())))
+    return emitOptionalError(location, "inferred shape '",
+                             dimSizesToString(inferredShape.getDims()), "' ",
+                             "is incompatible with return type of operation ",
+                             resultShapeType, "");
+
+  Type lhsType = lhs.getType();
+  Type rhsType = rhs.getType();
+  Type resultType = result.getType();
+  llvm::SmallVector<Type, 3> typeEntries{lhsType, rhsType, resultType};
+  if (noneQuantized<quant::QuantizedType>(typeEntries)) return success();
+  // dot_general_c14
+  if (!allQuantized<quant::QuantizedType>(typeEntries)) {
+    return emitOptionalError(location,
+                             "not all of operands and result are quantized");
+  }
+
+  auto lhsQType =
+      getElementTypeOrSelf(lhsType).dyn_cast<quant::UniformQuantizedType>();
+  auto rhsQType =
+      getElementTypeOrSelf(rhsType).dyn_cast<quant::UniformQuantizedType>();
+  auto resultQType =
+      getElementTypeOrSelf(resultType).dyn_cast<quant::UniformQuantizedType>();
+  // dot_general_c15
+  if (lhsQType.getStorageType() != rhsQType.getStorageType())
+    return emitOptionalError(location, "mismatched operand storage types, lhs ",
+                             lhsQType.getStorageType(), " and rhs ",
+                             rhsQType.getStorageType());
+  
+  // dot_general_c16
+  auto expressedType = lhsQType.getExpressedType();
+  if (expressedType != rhsQType.getExpressedType() ||
+      expressedType != resultQType.getExpressedType())
+    return emitOptionalError(location,
+                             "mismatched operands and result expressed types");
+  // dot_general_c17
+  if (rhsQType.getZeroPoint() != 0)
+    return emitOptionalError(location, "rhs zero point ",
+                             rhsQType.getZeroPoint(), " is not 0");
+  auto rhsQPAType = rhsQType.dyn_cast<quant::UniformQuantizedPerAxisType>();
+  auto resultQPAType = resultQType.dyn_cast<quant::UniformQuantizedPerAxisType>();
+  // dot_general_c18
+  if(!rhsQPAType && resultQPAType)
+    return emitOptionalError(location,
+                             "rhs and result are of mixed per_tensor and "
+                             "per_axis quantized tensor type ",
+                             rhsType, " and ", resultType);
+  // dot_general_c19
+  if (rhsQPAType && 
+      llvm::find(rhsContractingDimensions,
+                   rhsQPAType.getQuantizedDimension()))
+      return emitOptionalError(
+          location,
+          "rhs_contracting_dimensions contain rhs quantized dimension ",
+          rhsQPAType.getQuantizedDimension());
+          
   return success();
 }
 

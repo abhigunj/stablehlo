@@ -25,18 +25,21 @@ func.func @ops_per_axis_quantization(
   func.return
 }
 
-// %arg1 can be a per-axis Quantized
-func.func @dot_general_per_axis_quantization(%arg0: tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, %arg1: tensor<2x3x5x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<2x4x5x!quant.uniform<i8:f32:0, {0.1:-30}>> {
-  %0 = "stablehlo.dot_general"(%arg0, %arg1) {
-    dot_dimension_numbers = #stablehlo.dot<
-      lhs_batching_dimensions = [0],
-      rhs_batching_dimensions = [0],
-      lhs_contracting_dimensions = [1],
-      rhs_contracting_dimensions = [1]
-    >
-  } : (tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, tensor<2x3x5x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<2x4x5x!quant.uniform<i8:f32:0, {0.1:-30}>>
-  func.return %0 : tensor<2x4x5x!quant.uniform<i8:f32:0, {0.1:-30}>>
-}
+// -----
+
+// CsHECK-LAsBEL: func @quantized_dot_general
+//func.func @quantized_dot_general(%arg0: tensor<2x16x32x!quant.uniform<i8:f32, 2.0:15>>, %arg1: tensor<2x32x32x!quant.uniform<i8:f32:0, {5.0:0}>>) -> tensor<2x16x32x!quant.uniform<i8:f32, 10.0:50>> {
+//  %0 = "stablehlo.dot_general"(%arg0, %arg1) {
+//    dot_dimension_numbers = #stablehlo.dot<
+//      lhs_batching_dimensions = [0],
+//      lhs_contracting_dimensions = [2],
+//      rhs_batching_dimensions = [0],
+//      rhs_contracting_dimensions = [1]
+//    >,
+//    precision_config = [#stablehlo<precision DEFAULT>, #stablehlo<precision DEFAULT>]}
+//    : (tensor<2x16x32x!quant.uniform<i8:f32, 2.0:15>>, tensor<2x32x32x!quant.uniform<i8:f32:0, {5.0:0}>>) -> tensor<2x16x32x!quant.uniform<i8:f32, 10.0:50>>
+//  func.return %0 : tensor<2x16x32x!quant.uniform<i8:f32, 10.0:50>>
+//}
 
 // -----
 // Tests for StableHLO OPs supporting per-tensor quantization. These OPs may or may not support per-axis quantization
@@ -121,7 +124,7 @@ func.func @batch_norm_training_per_tensor_quantization(%input: tensor<2x2x2x2x!q
   func.return %0#0 : tensor<2x2x2x2x!quant.uniform<i8:f32, 1.0:17>>
 }
 
-func.func @dot_general_per_tensor_quantization(%arg0: tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, %arg1: tensor<2x3x5x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>> {
+func.func @dot_general_per_tensor_quantization(%arg0: tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, %arg1: tensor<2x3x5x!quant.uniform<i8:f32, 1.0:0>>) -> tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>> {
   %0 = "stablehlo.dot_general"(%arg0, %arg1) {
     dot_dimension_numbers = #stablehlo.dot<
       lhs_batching_dimensions = [0],
@@ -129,7 +132,7 @@ func.func @dot_general_per_tensor_quantization(%arg0: tensor<2x3x4x!quant.unifor
       lhs_contracting_dimensions = [1],
       rhs_contracting_dimensions = [1]
     >
-  } : (tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, tensor<2x3x5x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>>
+  } : (tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, tensor<2x3x5x!quant.uniform<i8:f32, 1.0:0>>) -> tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>>
   func.return %0 : tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>>
 }
 
@@ -891,4 +894,77 @@ func.func @convolution_c33(%arg0: tensor<1x8x8x207x!quant.uniform<i8:f32, 2.0:15
      {batch_group_count = 1 : i64, feature_group_count = 1 : i64, precision_config = [#stablehlo<precision DEFAULT>, #stablehlo<precision DEFAULT>]} :
     (tensor<1x8x8x207x!quant.uniform<i8:f32, 2.0:15>>, tensor<3x3x207x16x!quant.uniform<i8:f32:3, {0.1:-30}>>) -> tensor<1x8x8x16x!quant.uniform<i8:f32:0, {2.0:-30}>>
  func.return %0 : tensor<1x8x8x16x!quant.uniform<i8:f32:0, {2.0:-30}>>
+}
+
+// -----
+
+func.func @dot_general_c(%arg0: tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, %arg1: tensor<2x3x5x!quant.uniform<i8:f32, 1.0:0>>) -> tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>> {
+  %0 = "stablehlo.dot_general"(%arg0, %arg1) {
+    dot_dimension_numbers = #stablehlo.dot<
+      lhs_batching_dimensions = [0],
+      rhs_batching_dimensions = [0],
+      lhs_contracting_dimensions = [1],
+      rhs_contracting_dimensions = [1]
+    >
+  } : (tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, tensor<2x3x5x!quant.uniform<i8:f32, 1.0:0>>) -> tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>>
+  func.return %0 : tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>>
+}
+
+
+func.func @dot_general_c14(%arg0: tensor<2x3x4xf32>, %arg1: tensor<2x3x5x!quant.uniform<i8:f32, 1.0:0>>) -> tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>> {
+  // expected-error@+1 {{not all of operands and result are quantized}}
+  %0 = "stablehlo.dot_general"(%arg0, %arg1) {
+    dot_dimension_numbers = #stablehlo.dot<
+      lhs_batching_dimensions = [0],
+      rhs_batching_dimensions = [0],
+      lhs_contracting_dimensions = [1],
+      rhs_contracting_dimensions = [1]
+    >
+  } : (tensor<2x3x4xf32>, tensor<2x3x5x!quant.uniform<i8:f32, 1.0:0>>) -> tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>>
+  func.return %0 : tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>>
+}
+
+// -----
+
+func.func @dot_general_c15(%arg0: tensor<2x3x4x!quant.uniform<i16:f32, 1.0:17>>, %arg1: tensor<2x3x5x!quant.uniform<i8:f32, 1.0:0>>) -> tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>> {
+  // expected-error@+1 {{mismatched operand storage types, lhs 'i16' and rhs 'i8'}}
+  %0 = "stablehlo.dot_general"(%arg0, %arg1) {
+    dot_dimension_numbers = #stablehlo.dot<
+      lhs_batching_dimensions = [0],
+      rhs_batching_dimensions = [0],
+      lhs_contracting_dimensions = [1],
+      rhs_contracting_dimensions = [1]
+    >
+  } : (tensor<2x3x4x!quant.uniform<i16:f32, 1.0:17>>, tensor<2x3x5x!quant.uniform<i8:f32, 1.0:0>>) -> tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>>
+  func.return %0 : tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>>
+}
+
+// -----
+
+func.func @dot_general_c16(%arg0: tensor<2x3x4x!quant.uniform<i8:f64, 1.0:17>>, %arg1: tensor<2x3x5x!quant.uniform<i8:f32, 1.0:0>>) -> tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>> {
+  // expected-error@+1 {{mismatched operands and result expressed types}}
+  %0 = "stablehlo.dot_general"(%arg0, %arg1) {
+    dot_dimension_numbers = #stablehlo.dot<
+      lhs_batching_dimensions = [0],
+      rhs_batching_dimensions = [0],
+      lhs_contracting_dimensions = [1],
+      rhs_contracting_dimensions = [1]
+    >
+  } : (tensor<2x3x4x!quant.uniform<i8:f64, 1.0:17>>, tensor<2x3x5x!quant.uniform<i8:f32, 1.0:0>>) -> tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>>
+  func.return %0 : tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>>
+}
+
+// -----
+
+func.func @dot_general_c17(%arg0: tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, %arg1: tensor<2x3x5x!quant.uniform<i8:f32, 1.0:1>>) -> tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>> {
+  // expected-error@+1 {{rhs zero point 1 is not 0}}
+  %0 = "stablehlo.dot_general"(%arg0, %arg1) {
+    dot_dimension_numbers = #stablehlo.dot<
+      lhs_batching_dimensions = [0],
+      rhs_batching_dimensions = [0],
+      lhs_contracting_dimensions = [1],
+      rhs_contracting_dimensions = [1]
+    >
+  } : (tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, tensor<2x3x5x!quant.uniform<i8:f32, 1.0:1>>) -> tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>>
+  func.return %0 : tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>>
 }
