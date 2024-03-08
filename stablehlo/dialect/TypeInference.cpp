@@ -283,6 +283,24 @@ LogicalResult verifyPairwiseCompatibleShapes(TypeRange values) {
   return success();
 }
 
+LogicalResult verifyTransposeOp(std::optional<Location> location,
+                                Type operandType, ArrayRef<int64_t> permutation,
+                                Type resultType) {
+  // transpose_c4
+  if (auto resultQType = getElementTypeOrSelf(resultType)
+                             .dyn_cast<quant::UniformQuantizedPerAxisType>()) {
+    auto resultQDim = resultQType.getQuantizedDimension();
+    auto operandQDim = getElementTypeOrSelf(operandType)
+                           .dyn_cast<quant::UniformQuantizedPerAxisType>()
+                           .getQuantizedDimension();                  
+    if (operandQDim != permutation[resultQDim])
+      return emitOptionalError(location, "operand quantization_dimension ",
+                               operandQDim, " is not same as permutation[",
+                               resultQDim, "] ", permutation[resultQDim]);
+  }
+  return success();
+}
+
 LogicalResult verifyBatchNorm(std::optional<Location> location,
                               ValueRange multiDimOperands,
                               ValueRange singleDimOperands,
@@ -3204,12 +3222,16 @@ LogicalResult verifyBitcastConvertOp(std::optional<Location> location,
         location, "cannot convert between real and complex types, but got: ",
         operandShapedType, " and ", targetShapedType);
 
-  auto targetEltBitWidth = targetElt.isa<quant::UniformQuantizedType>()
-                               ? getBitWidth(targetElt.dyn_cast<quant::QuantizedType>().getStorageType())
-                               : getBitWidth(targetElt);
-  auto operandEltBitWidth = operandElt.isa<quant::UniformQuantizedType>()
-                               ? getBitWidth(operandElt.dyn_cast<quant::QuantizedType>().getStorageType())
-                               : getBitWidth(operandElt);
+  auto targetEltBitWidth =
+      targetElt.isa<quant::UniformQuantizedType>()
+          ? getBitWidth(
+                targetElt.dyn_cast<quant::QuantizedType>().getStorageType())
+          : getBitWidth(targetElt);
+  auto operandEltBitWidth =
+      operandElt.isa<quant::UniformQuantizedType>()
+          ? getBitWidth(
+                operandElt.dyn_cast<quant::QuantizedType>().getStorageType())
+          : getBitWidth(operandElt);
 
   auto operandType = operandShapedType.dyn_cast<RankedTensorType>();
   auto targetType = targetShapedType.dyn_cast<RankedTensorType>();
@@ -3312,24 +3334,30 @@ LogicalResult verifyBroadcastInDimOp(std::optional<Location> location,
   }
 
   // broadcast_in_dim_c6
-  if(auto resultQType = getElementTypeOrSelf(result.getType()).dyn_cast<quant::UniformQuantizedPerAxisType>()){
-    auto operandQType = getElementTypeOrSelf(operand.getType()).dyn_cast<quant::UniformQuantizedPerAxisType>();
+  if (auto resultQType = getElementTypeOrSelf(result.getType())
+                             .dyn_cast<quant::UniformQuantizedPerAxisType>()) {
+    auto operandQType = getElementTypeOrSelf(operand.getType())
+                            .dyn_cast<quant::UniformQuantizedPerAxisType>();
     auto operandQDim = operandQType.getQuantizedDimension();
     auto resultQDim = resultQType.getQuantizedDimension();
-    if(resultQDim != broadcastDimensions[operandQDim])
-      return emitOptionalError(
-            location, "result quantization_dimension ", resultQDim,
-             " not same as broadcast_dimensions[", operandQDim, "] ", broadcastDimensions[operandQDim]);
-    
-    if(operandType.getDimSize(operandQDim) == 1){
-      
-      for(size_t j = 0; j != resultType.getDimSize(resultQDim); ++j){
-        if(resultQType.getScales()[j] != operandQType.getScales()[0])
-          return emitOptionalError(location, "mismatch result scale ", j, " (", resultQType.getScales()[j],
-         ") and operand scale 0 (", operandQType.getScales()[0], ")" );
-        if(resultQType.getZeroPoints()[j] != operandQType.getZeroPoints()[0])
-          return emitOptionalError(location, "mismatch result zeroPoint ", j, " (", resultQType.getZeroPoints()[j],
-         ") and operand zeroPoint 0 (", operandQType.getZeroPoints()[0], ")" );
+    if (resultQDim != broadcastDimensions[operandQDim])
+      return emitOptionalError(location, "result quantization_dimension ",
+                               resultQDim, " not same as broadcast_dimensions[",
+                               operandQDim, "] ",
+                               broadcastDimensions[operandQDim]);
+
+    if (operandType.getDimSize(operandQDim) == 1) {
+      for (size_t j = 0; j != resultType.getDimSize(resultQDim); ++j) {
+        if (resultQType.getScales()[j] != operandQType.getScales()[0])
+          return emitOptionalError(location, "mismatch result scale ", j, " (",
+                                   resultQType.getScales()[j],
+                                   ") and operand scale 0 (",
+                                   operandQType.getScales()[0], ")");
+        if (resultQType.getZeroPoints()[j] != operandQType.getZeroPoints()[0])
+          return emitOptionalError(location, "mismatch result zeroPoint ", j,
+                                   " (", resultQType.getZeroPoints()[j],
+                                   ") and operand zeroPoint 0 (",
+                                   operandQType.getZeroPoints()[0], ")");
       }
     }
   }

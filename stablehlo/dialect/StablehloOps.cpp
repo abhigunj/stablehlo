@@ -187,6 +187,14 @@ INFER_RETURN_TYPE_COMPONENTS_FROM_OPERANDS(TanhOp)
 INFER_RETURN_TYPE_COMPONENTS_FROM_OPERANDS(XorOp)
 
 //===----------------------------------------------------------------------===//
+// TransposeOp
+//===----------------------------------------------------------------------===//
+
+LogicalResult TransposeOp::verify() {
+  return hlo::verifyTransposeOp(getLoc(), getOperand().getType(), getPermutation(), getResult().getType());
+}
+
+//===----------------------------------------------------------------------===//
 // AfterAllOp
 //===----------------------------------------------------------------------===//
 
