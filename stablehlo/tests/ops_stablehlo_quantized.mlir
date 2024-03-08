@@ -968,3 +968,20 @@ func.func @dot_general_c17(%arg0: tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, 
   } : (tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, tensor<2x3x5x!quant.uniform<i8:f32, 1.0:1>>) -> tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>>
   func.return %0 : tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>>
 }
+
+// -----
+
+func.func @bitcast_convert_c1a(%arg0: tensor<1x2x2x!quant.uniform<i8<-128:127>:f32:2, {0.1:-30, 0.5:-20}>>) {
+  // expected-error@+1 {{operand and result shapes must match except for the innermost dimension of the shape with the smaller element type}}
+  %bitcast_convert = "stablehlo.bitcast_convert"(%arg0) : (tensor<1x2x2x!quant.uniform<i8<-128:127>:f32:2, {0.1:-30, 0.5:-20}>>) -> tensor<2x2x2x!quant.uniform<i8<-128:127>:f32:2, {0.1:-30, 0.5:-20}>>
+  func.return
+}
+
+// -----
+
+// how to generate this test case?
+//func.func @bitcast_convert_c1b(%arg: tensor<!quant.uniform<i8:f64, 1.0:17>>) -> tensor<!quant.uniform<i8:f32, 1.0:17>> {
+//  // exddpected-error@+1 {{rank of smaller element type (0) should be 1 more than rank of larger element type (0), but 0 != 0 + 1.}}
+//  %0 = "stablehlo.bitcast_convert"(%arg) : (tensor<!quant.uniform<i8:f64, 1.0:17>>) -> tensor<!quant.uniform<i8:f32, 1.0:17>>
+//  return %0 : tensor<!quant.uniform<i8:f32, 1.0:17>>
+//}
