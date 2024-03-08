@@ -3205,6 +3205,29 @@ LogicalResult verifyBroadcastInDimOp(std::optional<Location> location,
     }
   }
 
+  // broadcast_in_dim_c6
+  if(auto resultQType = getElementTypeOrSelf(result.getType()).dyn_cast<quant::UniformQuantizedPerAxisType>()){
+    auto operandQType = getElementTypeOrSelf(operand.getType()).dyn_cast<quant::UniformQuantizedPerAxisType>();
+    auto operandQDim = operandQType.getQuantizedDimension();
+    auto resultQDim = resultQType.getQuantizedDimension();
+    if(resultQDim != broadcastDimensions[operandQDim])
+      return emitOptionalError(
+            location, "result quantization_dimension ", resultQDim,
+             " not same as broadcast_dimensions[", operandQDim, "] ", broadcastDimensions[operandQDim]);
+    
+    if(operandType.getDimSize(operandQDim) == 1){
+      
+      for(size_t j = 0; j != resultType.getDimSize(resultQDim); ++j){
+        if(resultQType.getScales()[j] != operandQType.getScales()[0])
+          return emitOptionalError(location, "mismatch result scale ", j, " (", resultQType.getScales()[j],
+         ") and operand scale 0 (", operandQType.getScales()[0], ")" );
+        if(resultQType.getZeroPoints()[j] != operandQType.getZeroPoints()[0])
+          return emitOptionalError(location, "mismatch result zeroPoint ", j, " (", resultQType.getZeroPoints()[j],
+         ") and operand zeroPoint 0 (", operandQType.getZeroPoints()[0], ")" );
+      }
+    }
+  }
+
   return success();
 }
 
