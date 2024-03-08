@@ -2843,7 +2843,9 @@ def StableHLO_TransposeOp: StableHLO_ShapedInterfaceOp<"transpose",
     HLO_TensorOrPerAxisQuantizedTensor:$operand,
     DenseI64ArrayAttr:$permutation
   );
-  let results = (outs HLO_TensorOrPerAxisQuantizedTensor);
+  let results = (outs HLO_TensorOrPerAxisQuantizedTensor:$result);
+
+  let hasVerifier = 1;
 
   let assemblyFormat = [{
     $operand `,` `dims` `=` $permutation

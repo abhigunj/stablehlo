@@ -980,3 +980,12 @@ func.func @broadcast_in_dim_c6(
   } : (tensor<1x2x1x!quant.uniform<i8<-128:127>:f32:2, {0.1:-30, 0.5:-20}>>) -> tensor<1x2x3x2x!quant.uniform<i8<-128:127>:f32:3, {0.1:-30, 0.1:-20}>>
   func.return
 }
+
+// -----
+
+func.func @transpose_c4(%arg0: tensor<1x2x2x!quant.uniform<i8<-128:127>:f32:0, {0.1:-30, 0.5:-20}>>) {
+  // expected-error@+1 {{operand quantization_dimension 0 is not same as permutation[1] 2}}  
+  %transpose = "stablehlo.transpose"(%arg0) {permutation = array<i64: 0, 2, 1>
+  } : (tensor<1x2x2x!quant.uniform<i8<-128:127>:f32:0, {0.1:-30, 0.5:-20}>>) -> tensor<1x2x2x!quant.uniform<i8<-128:127>:f32:1, {0.1:-30, 0.5:-20}>>
+  func.return
+}
