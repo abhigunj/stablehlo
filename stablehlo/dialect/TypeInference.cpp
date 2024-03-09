@@ -3494,14 +3494,15 @@ LogicalResult verifyDotGeneralOp(std::optional<Location> location, Value lhs,
   auto rhsQPAType = rhsQType.dyn_cast<quant::UniformQuantizedPerAxisType>();
   // dot_general_c17
   auto expectedZP = 0;
-  if(rhsQPAType){
+  if (rhsQPAType) {
     for (auto rhsZP : rhsQPAType.getZeroPoints()) {
       if (rhsZP != expectedZP)
-        return emitOptionalError(location, "rhs zero_point ", rhsZP, " is not 0");
+        return emitOptionalError(location, "rhs zero_point ", rhsZP,
+                                 " is not 0");
     }
   } else {
-    auto rhsZP =  rhsQType.cast<quant::UniformQuantizedType>().getZeroPoint();
-    if(rhsZP != expectedZP)
+    auto rhsZP = rhsQType.cast<quant::UniformQuantizedType>().getZeroPoint();
+    if (rhsZP != expectedZP)
       return emitOptionalError(location, "rhs zero_point ", rhsZP, " is not 0");
   }
 
