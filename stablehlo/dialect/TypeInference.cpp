@@ -3117,14 +3117,13 @@ LogicalResult verifyBitcastConvertOp(std::optional<Location> location,
         operandShapedType, " and ", targetShapedType);
 
   auto targetEltBitWidth =
-      targetElt.isa<quant::UniformQuantizedType>()
-          ? getBitWidth(
-                targetElt.dyn_cast<quant::QuantizedType>().getStorageType())
+      targetElt.isa<quant::QuantizedType>()
+          ? getBitWidth(targetElt.cast<quant::QuantizedType>().getStorageType())
           : getBitWidth(targetElt);
   auto operandEltBitWidth =
-      operandElt.isa<quant::UniformQuantizedType>()
+      operandElt.isa<quant::QuantizedType>()
           ? getBitWidth(
-                operandElt.dyn_cast<quant::QuantizedType>().getStorageType())
+                operandElt.cast<quant::QuantizedType>().getStorageType())
           : getBitWidth(operandElt);
 
   auto operandType = operandShapedType.dyn_cast<RankedTensorType>();
@@ -3239,9 +3238,8 @@ LogicalResult verifyBroadcastInDimOp(std::optional<Location> location,
                                resultQDim, " not same as broadcast_dimensions[",
                                operandQDim, "] ",
                                broadcastDimensions[operandQDim]);
-
     if (operandType.getDimSize(operandQDim) == 1) {
-      for (size_t j = 0; j != resultType.getDimSize(resultQDim); ++j) {
+      for (auto j = 0; j != resultType.getDimSize(resultQDim); ++j) {
         if (resultQType.getScales()[j] != operandQType.getScales()[0])
           return emitOptionalError(location, "mismatch result scale ", j, " (",
                                    resultQType.getScales()[j],
@@ -3477,12 +3475,10 @@ LogicalResult verifyDotGeneralOp(std::optional<Location> location, Value lhs,
     return emitOptionalError(location,
                              "not all of operands and result are quantized");
   }
-  auto lhsQType =
-      getElementTypeOrSelf(lhsType).dyn_cast<quant::UniformQuantizedType>();
-  auto rhsQType =
-      getElementTypeOrSelf(rhsType).dyn_cast<quant::UniformQuantizedType>();
+  auto lhsQType = getElementTypeOrSelf(lhsType).cast<quant::QuantizedType>();
+  auto rhsQType = getElementTypeOrSelf(rhsType).cast<quant::QuantizedType>();
   auto resultQType =
-      getElementTypeOrSelf(resultType).dyn_cast<quant::UniformQuantizedType>();
+      getElementTypeOrSelf(resultType).cast<quant::QuantizedType>();
   // dot_general_c15
   if (lhsQType.getStorageType() != rhsQType.getStorageType())
     return emitOptionalError(location, "mismatched operand storage types, lhs ",
@@ -3495,11 +3491,20 @@ LogicalResult verifyDotGeneralOp(std::optional<Location> location, Value lhs,
     return emitOptionalError(location,
                              "mismatched operands and result expressed types");
 
-  // dot_general_c17
-  if (rhsQType.getZeroPoint() != 0)
-    return emitOptionalError(location, "rhs zero point ",
-                             rhsQType.getZeroPoint(), " is not 0");
   auto rhsQPAType = rhsQType.dyn_cast<quant::UniformQuantizedPerAxisType>();
+  // dot_general_c17
+  auto expectedZP = 0;
+  if(rhsQPAType){
+    for (auto rhsZP : rhsQPAType.getZeroPoints()) {
+      if (rhsZP != expectedZP)
+        return emitOptionalError(location, "rhs zero_point ", rhsZP, " is not 0");
+    }
+  } else {
+    auto rhsZP =  rhsQType.cast<quant::UniformQuantizedType>().getZeroPoint();
+    if(rhsZP != expectedZP)
+      return emitOptionalError(location, "rhs zero_point ", rhsZP, " is not 0");
+  }
+
   auto resultQPAType =
       resultQType.dyn_cast<quant::UniformQuantizedPerAxisType>();
   // dot_general_c18

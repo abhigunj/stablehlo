@@ -929,7 +929,7 @@ func.func @dot_general_c16(%arg0: tensor<2x3x4x!quant.uniform<i8:f64, 1.0:17>>, 
 // -----
 
 func.func @dot_general_c17(%arg0: tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, %arg1: tensor<2x3x5x!quant.uniform<i8:f32, 1.0:1>>) -> tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>> {
-  // expected-error@+1 {{rhs zero point 1 is not 0}}
+  // expected-error@+1 {{rhs zero_point 1 is not 0}}
   %0 = "stablehlo.dot_general"(%arg0, %arg1) {
     dot_dimension_numbers = #stablehlo.dot<
       lhs_batching_dimensions = [0],
