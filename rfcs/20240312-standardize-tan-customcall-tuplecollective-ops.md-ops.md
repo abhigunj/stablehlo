@@ -17,7 +17,7 @@ Adding TanOP to StableHLO is requested at ticket [#1](https://github.com/openxla
 
 ### CustomCallOp with typed FFI
 
-StableHLO CustomCallOp to support `API_VERSION_TYPED_FFI` as `StableHLO_CustomCallApiVersionAttr`. It will help to unify metadata under single `mlir::DictionaryAttr` and won't need to pass the metadata as strings. Similar to what [MHLO CustomCallOp](https://github.com/tensorflow/mlir-hlo/blob/master/mhlo/IR/hlo_ops.td#L2483) is already doing. 
+StableHLO CustomCallOp to support `API_VERSION_TYPED_FFI` as `StableHLO_CustomCallApiVersionAttr`. It will help to unify metadata under single `mlir::DictionaryAttr` and won't need to pass the metadata as strings. Similar to what [MHLO CustomCallOp](https://github.com/tensorflow/mlir-hlo/blob/master/mhlo/IR/hlo_ops.td#L2483) is already doing.
 open tickets for this request: [#2](https://github.com/openxla/stablehlo/issues/637), [#3](https://github.com/openxla/stablehlo/issues/741)
 
 ### Tuple-collectives (AllGatherOp, AllReduceOp, AllToAllOp)
