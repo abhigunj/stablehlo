@@ -27,7 +27,6 @@ MHLO OPs already [support](https://github.com/tensorflow/mlir-hlo/blob/master/mh
 AllReduceOp support is requested at open ticket [#4](https://github.com/openxla/stablehlo/issues/1370).
 AllToAllOp support is requested at open ticket [#5](https://github.com/openxla/stablehlo/issues/574) and identified as a feature gap.
 
-
 ## Proposed Specification
 
 ### tan
@@ -66,8 +65,6 @@ produces a `result` tensor. Depending on the element type, does the following:
 // %result: [-0.76159416, 0.0, 0.76159416]
 ```
 
-
-
 ### custom_call
 
 #### Semantics
@@ -105,8 +102,6 @@ implementation-defined metadata.
   called_computations = [@foo]
 } : (tensor<f64>) -> tensor<f64>
 ```
-
-
 
 ### all_gather
 
