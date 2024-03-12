@@ -271,6 +271,8 @@ LogicalResult verifyTransposeOp(std::optional<Location> location,
   if (auto resultQType = getElementTypeOrSelf(resultType)
                              .dyn_cast<quant::UniformQuantizedPerAxisType>()) {
     auto resultQDim = resultQType.getQuantizedDimension();
+    // Result and operand are of per-axis quantized is already validated at 
+    // HLO_CompatibleOperandsAndResultElementType
     auto operandQDim = getElementTypeOrSelf(operandType)
                            .dyn_cast<quant::UniformQuantizedPerAxisType>()
                            .getQuantizedDimension();
@@ -3235,9 +3237,9 @@ LogicalResult verifyBroadcastInDimOp(std::optional<Location> location,
     auto resultQDim = resultQType.getQuantizedDimension();
     if (resultQDim != broadcastDimensions[operandQDim])
       return emitOptionalError(location, "result quantization_dimension ",
-                               resultQDim, " not same as broadcast_dimensions[",
-                               operandQDim, "] ",
-                               broadcastDimensions[operandQDim]);
+                               resultQDim, " not same as broadcast_dimensions ",
+                               operandQDim, " (",
+                               broadcastDimensions[operandQDim], ")");
     if (operandType.getDimSize(operandQDim) == 1) {
       for (auto j = 0; j != resultType.getDimSize(resultQDim); ++j) {
         if (resultQType.getScales()[j] != operandQType.getScales()[0])
@@ -3515,12 +3517,13 @@ LogicalResult verifyDotGeneralOp(std::optional<Location> location, Value lhs,
                              "per_axis quantized tensor type ",
                              rhsType, " and ", resultType);
   // dot_general_c19
-  if (rhsQPAType &&
-      llvm::find(rhsContractingDimensions, rhsQPAType.getQuantizedDimension()))
-    return emitOptionalError(
-        location, "rhs_contracting_dimensions contain rhs quantized dimension ",
-        rhsQPAType.getQuantizedDimension());
-
+  if (rhsQPAType){
+      auto *it = llvm::find(rhsContractingDimensions, rhsQPAType.getQuantizedDimension());
+      if (it != rhsContractingDimensions.end())
+        return emitOptionalError(
+            location, "rhs_contracting_dimensions contain rhs quantized dimension ",
+            rhsQPAType.getQuantizedDimension());
+  }
   return success();
 }
 
