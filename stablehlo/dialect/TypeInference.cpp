@@ -271,7 +271,7 @@ LogicalResult verifyTransposeOp(std::optional<Location> location,
   if (auto resultQType = getElementTypeOrSelf(resultType)
                              .dyn_cast<quant::UniformQuantizedPerAxisType>()) {
     auto resultQDim = resultQType.getQuantizedDimension();
-    // Result and operand are of per-axis quantized is already validated at 
+    // Result and operand are of per-axis quantized is already validated at
     // HLO_CompatibleOperandsAndResultElementType
     auto operandQDim = getElementTypeOrSelf(operandType)
                            .dyn_cast<quant::UniformQuantizedPerAxisType>()
@@ -3517,12 +3517,14 @@ LogicalResult verifyDotGeneralOp(std::optional<Location> location, Value lhs,
                              "per_axis quantized tensor type ",
                              rhsType, " and ", resultType);
   // dot_general_c19
-  if (rhsQPAType){
-      auto *it = llvm::find(rhsContractingDimensions, rhsQPAType.getQuantizedDimension());
-      if (it != rhsContractingDimensions.end())
-        return emitOptionalError(
-            location, "rhs_contracting_dimensions contain rhs quantized dimension ",
-            rhsQPAType.getQuantizedDimension());
+  if (rhsQPAType) {
+    auto* it = llvm::find(rhsContractingDimensions,
+                          rhsQPAType.getQuantizedDimension());
+    if (it != rhsContractingDimensions.end())
+      return emitOptionalError(
+          location,
+          "rhs_contracting_dimensions contain rhs quantized dimension ",
+          rhsQPAType.getQuantizedDimension());
   }
   return success();
 }
