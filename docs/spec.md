@@ -774,8 +774,9 @@ Afterwards, within each `process_group`:
 #### Semantics
 
 Within each process group in the StableHLO process grid, applies a reduction
-function `computation` to the values of the `operand` tensor from each process
-and produces a `result` tensor.
+function `computation` to the values of the `operands` tensors from each process
+and produces a `results` tensors. When multiple `operands` are specified, the
+`all_reduce` is performed on each operand.
 
 The operation splits the StableHLO process grid into `process_groups` which is
 defined as follows:
@@ -787,21 +788,21 @@ defined as follows:
 * `flattened_ids(replica_groups)`
   if `channel_id > 0 and use_global_device_ids = true`.
 
-Afterwards, within each `process_group`:
+Afterwards, within each `process_group` and for each i in [0, size(operands)]:
 
-* `result@process[result_index] = exec(schedule)` for some binary tree
+* `results[i]@process[results[i]_index] = exec(schedule)` for some binary tree
   `schedule` where:
   * `exec(node)` = `computation(exec(node.left), exec(node.right))`.
   * `exec(leaf)` = `leaf.value`.
 * `schedule` is an implementation-defined binary tree whose in-order
-  traversal is `to_destination_type(operands@process_group...[result_index],
+  traversal is `to_destination_type(operands[i]@process_group...[results[i]_index],
   type(func_inputs(computation)[0]))`.
 
 #### Inputs
 
 | Label | Name                    | Type                                                             | Constraints |
 |-------|-------------------------|------------------------------------------------------------------|-------------|
-| (I1)  | `operand`               | tensor or per-tensor quantized tensor                            | (C5), (C6)  |
+| (I1)  | `operands`               | variadic number of tensors or per-tensor quantized tensors                            | (C5), (C6)  |
 | (I2)  | `replica_groups`        | variadic number of 1-dimensional tensor constants of type `si64` | (C1-C3)     |
 | (I3)  | `channel_id`            | constant of type `si64`                                          | (C4)        |
 | (I4)  | `use_global_device_ids` | constant of type `i1`                                            | (C4)        |
@@ -811,7 +812,7 @@ Afterwards, within each `process_group`:
 
 | Name     | Type                                  | Constraints |
 |----------|---------------------------------------|-------------|
-| `result` | tensor or per-tensor quantized tensor | (C6-C7)     |
+| `results` | variadic number of tensors or per-tensor quantized tensors | (C6-C7)     |
 
 #### Constraints
 
@@ -824,8 +825,8 @@ Afterwards, within each `process_group`:
 * (C4) If `use_global_device_ids = true`, then `channel_id > 0`.
 * (C5) `computation` has type `(tensor<E>, tensor<E>) -> (tensor<E>)` where
        `is_promotable(element_type(operand), E)`.
-* (C6) `shape(result) = shape(operand)`.
-* (C7) `element_type(result) = E`.
+* (C6) `shape(results...) = shape(operands...)`.
+* (C7) `element_type(results...) = E`.
 
 #### Examples
 
