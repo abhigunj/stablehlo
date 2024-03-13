@@ -699,8 +699,9 @@ it only exists to establish data dependencies from `result` to `inputs`.
 #### Semantics
 
 Within each process group in the StableHLO process grid, concatenates the values
-of the `operand` tensor from each process along `all_gather_dim` and produces a
-`result` tensor.
+of the `operands` tensors from each process along `all_gather_dim` and produces a
+`results` tensors. When multiple `operands` are specified, the `all_gather` is
+performed on each operand.
 
 The operation splits the StableHLO process grid into `process_groups` which is
 defined as follows:
@@ -712,18 +713,18 @@ defined as follows:
 * `flattened_ids(replica_groups)`
   if `channel_id > 0 and use_global_device_ids = true`.
 
-Afterwards, within each `process_group`:
+Afterwards, within each process_group and for each i in [0, size(operands)]:
 
-* `operands@receiver = [operand@sender for sender in process_group]` for all
+* `operands[i]@receiver = [operand[i]@sender for sender in process_group]` for all
   `receiver` in `process_group`.
-* `result@process = concatenate(operands@process, all_gather_dim)` for all
+* `results[i]@process = concatenate(operands[i]@process, all_gather_dim)` for all
   `process` in `process_group`.
 
 #### Inputs
 
 | Label | Name                    | Type                                         | Constraints |
 |-------|-------------------------|----------------------------------------------|-------------|
-| (I1)  | `operand`               | tensor or per-tensor quantized tensor        | (C1), (C6)  |
+| (I1)  | `operands`               | variadic number of tensors or per-tensor quantized tensors        | (C1), (C6)  |
 | (I2)  | `all_gather_dim`        | constant of type `si64`                      | (C1), (C6)  |
 | (I3)  | `replica_groups`        | 2-dimensional tensor constant of type `si64` | (C2-C4)     |
 | (I4)  | `channel_id`            | constant of type `si64`                      | (C5)        |
@@ -733,11 +734,11 @@ Afterwards, within each `process_group`:
 
 | Name     | Type                                  | Constraints |
 |----------|---------------------------------------|-------------|
-| `result` | tensor or per-tensor quantized tensor | (C6)        |
+| `results` | variadic number of tensors or per-tensor quantized tensors | (C6)        |
 
 #### Constraints
 
-* (C1) `0 <= all_gather_dim < rank(operand)`.
+* (C1) `0 <= all_gather_dim < rank(operands...)`.
 * (C2) `is_unique(replica_groups)`.
 * (C3) `size(replica_groups)` is defined as:
   * `num_replicas` if `cross_replica` is used.
@@ -745,9 +746,9 @@ Afterwards, within each `process_group`:
   * `num_processes` if `flattened_ids` is used.
 * (C4) `0 <= replica_groups < size(replica_groups)`.
 * (C5) If `use_global_device_ids = true`, then `channel_id > 0`.
-* (C6) `type(result) = type(operand)` except:
-  * `dim(result, all_gather_dim) =
-    dim(operand, all_gather_dim) * dim(process_groups, 1)`.
+* (C6) `type(results...) = type(operands...)` except:
+  * `dim(results..., all_gather_dim) =
+    dim(operands..., all_gather_dim) * dim(process_groups, 1)`.
 
 #### Examples
 
@@ -856,9 +857,10 @@ Afterwards, within each `process_group` and for each i in [0, size(operands)]:
 ![all_to_all](images/spec/all_to_all.svg)
 
 Within each process group in the StableHLO process grid, splits the values of
-the `operand` tensor along `split_dimension` into parts, scatters the split
+the `operands` tensors along `split_dimension` into parts, scatters the split
 parts between the processes, concatenates the scattered parts along
-`concat_dimension` and produces a `result` tensor.
+`concat_dimension` and produces a `results` tensors. When multiple `operands`
+are specified, the `all_to_all` is performed on each operand.
 
 The operation splits the StableHLO process grid into `process_groups` which is
 defined as follows:
@@ -866,20 +868,20 @@ defined as follows:
 * `cross_replica(replica_groups)` if `channel_id <= 0`.
 * `cross_partition(replica_groups)` if `channel_id > 0`.
 
-Afterwards, within each `process_group`:
+Afterwards, within each `process_group` and for each i in [0, size(operands)]:
 
-* `split_parts@sender = split(operand@sender, split_count, split_dimension)`
+* `split_parts@sender = split(operands[i]@sender, split_count, split_dimension)`
   for all `sender` in `process_group`.
 * `scattered_parts@receiver = [split_parts@sender[receiver_index] for
   sender in process_group]` where
   `receiver_index = process_group.index(receiver)`.
-* `result@process = concatenate(scattered_parts@process, concat_dimension)`.
+* `results[i]@process = concatenate(scattered_parts@process, concat_dimension)`.
 
 #### Inputs
 
 | Label | Name               | Type                                         | Constraints            |
 |-------|--------------------|----------------------------------------------|------------------------|
-| (I1)  | `operand`          | tensor or per-tensor quantized tensor        | (C1-C3), (C9)          |
+| (I1)  | `operands`          | variadic number of tensors or per-tensor quantized tensors        | (C1-C3), (C9)          |
 | (I2)  | `split_dimension`  | constant of type `si64`                      | (C1), (C2), (C9)       |
 | (I3)  | `concat_dimension` | constant of type `si64`                      | (C3), (C9)             |
 | (I4)  | `split_count`      | constant of type `si64`                      | (C2), (C4), (C8), (C9) |
@@ -890,13 +892,13 @@ Afterwards, within each `process_group`:
 
 | Name     | Type                                  | Constraints |
 |----------|---------------------------------------|-------------|
-| `result` | tensor or per-tensor quantized tensor | (C9)        |
+| `results` | variadic number of tensors or per-tensor quantized tensors | (C9)        |
 
 #### Constraints
 
-* (C1) `0 <= split_dimension < rank(operand)`.
-* (C2) `dim(operand, split_dimension) % split_count = 0`.
-* (C3) `0 <= concat_dimension < rank(operand)`.
+* (C1) `0 <= split_dimension < rank(operands...)`.
+* (C2) `dim(operands..., split_dimension) % split_count = 0`.
+* (C3) `0 <= concat_dimension < rank(operands...)`.
 * (C4) `0 < split_count`.
 * (C5) `is_unique(replica_groups)`.
 * (C6) `size(replica_groups)` is defined as:
@@ -904,11 +906,11 @@ Afterwards, within each `process_group`:
   * `num_partitions` if `cross_partition` is used.
 * (C7) `0 <= replica_groups < size(replica_groups)`.
 * (C8) `dim(replica_groups, 1) = split_count`.
-* (C9) `type(result) = type(operand)` except:
-  * `dim(result, split_dimension) =
-    dim(operand, split_dimension) / split_count`.
-  * `dim(result, concat_dimension) =
-    dim(operand, concat_dimension) * split_count`.
+* (C9) `type(results...) = type(operands...)` except:
+  * `dim(results..., split_dimension) =
+    dim(operands..., split_dimension) / split_count`.
+  * `dim(results..., concat_dimension) =
+    dim(operands..., concat_dimension) * split_count`.
 
 #### Examples
 
@@ -2410,11 +2412,6 @@ Encapsulates an implementation-defined operation `call_target_name` that takes
 `backend_config` and `api_version` may be used to provide additional
 implementation-defined metadata.
 
-At the moment, this operation contains a fairly disorganized collection of
-metadata which reflects organic evolution of its counterpart operation in
-the XLA compiler. In the future, we are planning to unify this metadata
-([#741](https://github.com/openxla/stablehlo/issues/741)).
-
 #### Inputs
 
 | Label | Name                  | Type                                          |
@@ -2422,7 +2419,7 @@ the XLA compiler. In the future, we are planning to unify this metadata
 | (I1)  | `inputs`              | variadic number of values                     |
 | (I2)  | `call_target_name`    | constant of type `string`                     |
 | (I3)  | `has_side_effect`     | constant of type `i1`                         |
-| (I4)  | `backend_config`      | constant of type `string`                     |
+| (I4)  | `backend_config`      | constant of type `string` or attribute dictionary                   |
 | (I5)  | `api_version`         | constant of type `si32`                       |
 | (I6)  | `called_computations` | variadic number of constants of type `string` |
 
@@ -2438,8 +2435,8 @@ the XLA compiler. In the future, we are planning to unify this metadata
 %results = "stablehlo.custom_call"(%input0) {
   call_target_name = "foo",
   has_side_effect = false,
-  backend_config = "bar",
-  api_version = 1 : i32,
+  backend_config = {bar = 42 : i32},
+  api_version = 4 : i32,
   called_computations = [@foo]
 } : (tensor<f64>) -> tensor<f64>
 ```
@@ -5622,6 +5619,42 @@ Performs element-wise subtraction of two tensors `lhs` and `rhs` and produces a
 ```
 
 &nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/subtract.mlir)
+
+### tan
+
+#### Semantics
+
+Performs element-wise tangent operation on `operand` tensor and
+produces a `result` tensor. Depending on the element type, does the following:
+
+* For floats: `tan` from IEEE-754.
+* For complex numbers: complex tangent.
+* For quantized types:
+  * `dequantize_op_quantize(tan, operand, type(result))`.
+
+#### Inputs
+
+| Label | Name      | Type                                                                    | Constraints |
+|-------|-----------|-------------------------------------------------------------------------|-------------|
+| (I1)  | `operand` | tensor of floating-point or complex type or per-tensor quantized tensor | (C1)        |
+
+#### Outputs
+
+| Name     | Type                                                                    | Constraints |
+|----------|-------------------------------------------------------------------------|-------------|
+| `result` | tensor of floating-point or complex type or per-tensor quantized tensor | (C1)        |
+
+#### Constraints
+
+* (C1) `baseline_type(operand) = baseline_type(result)`.
+
+#### Examples
+
+```mlir
+// %operand: [-1.0, 0.0, 1.0]
+%result = "stablehlo.tan"(%operand) : (tensor<3xf32>) -> tensor<3xf32>
+// %result: [-1.55740772465, 0.0, 1.55740772465]
+```
 
 ### tanh
 
