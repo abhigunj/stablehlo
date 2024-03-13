@@ -55,8 +55,15 @@ in [#1370](https://github.com/openxla/stablehlo/issues/1370) is relied on by
 PyTorch/XLA today via XlaBuilder ([ref](https://github.com/pytorch/xla/blob/1bbe333ad137ace6b8134db640c0b24c8c428db6/torch_xla/csrc/cross_replica_reduces.cpp#L156)).
 `all_to_all` support is requested in
 [#574](https://github.com/openxla/stablehlo/issues/574) and identified as a feature
-gap.
+gap. #574
 
 ## Proposed Specification Changes
 
-See changes to spec.md in this PR
+View spec.md changes in this PR to view the diff vs original spec.
+
+To view rich text of the spec, see:
+[TanOp](https://github.com/abhigunj/stablehlo/blob/a3b4c1b69aff41e3175c1b4ccb6352bcadf1f79a/docs/spec.md#tan)
+[CustomCallOp](https://github.com/abhigunj/stablehlo/blob/a3b4c1b69aff41e3175c1b4ccb6352bcadf1f79a/docs/spec.md#custom_call)
+[AllGatherOp](https://github.com/abhigunj/stablehlo/blob/a3b4c1b69aff41e3175c1b4ccb6352bcadf1f79a/docs/spec.md#all_gather)
+[AllReduceOp](https://github.com/abhigunj/stablehlo/blob/a3b4c1b69aff41e3175c1b4ccb6352bcadf1f79a/docs/spec.md#all_reduce)
+[AllToAllOp](https://github.com/abhigunj/stablehlo/blob/a3b4c1b69aff41e3175c1b4ccb6352bcadf1f79a/docs/spec.md#all_to_all)
