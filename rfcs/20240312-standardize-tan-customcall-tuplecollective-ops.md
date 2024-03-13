@@ -1,4 +1,5 @@
 # [RFC] Standardize TanOp, CustomCall with typed FFI, and tuple-collectives for HLO-StableHLO parity, used by JAX and PT/XLA
+
 Status: Draft<br/>
 Initial version: 03/12/2024<br/>
 Last updated: 03/12/2024<br/>
@@ -6,26 +7,20 @@ Discussion thread: [GitHub](add PR Link)
 
 ## Motivation
 
-`TanOP`, `CustomCallOP` with typed FFI and tuple-collectives (`all_gather`, `all_reduce`, `alltoall`) OPs are already successful in MHLO. There are hacks to leverage these features (unregistered attributes, serialize strings, etc) which are not required once we standardize these OPs in StableHLO. There are existing user requests in the StableHLO repo for these features.
+`TanOp`, `CustomCallOp` with typed FFI and tuple-collectives (`AllGatherOp`, `AllReduceOp`, `AllToAllOp`) features are already successful in MHLO. There are hacks in place to leverage these features (unregistered attributes, serialize strings). Standardizing these StableHLO ops will ensure HLO-StableHLO parity and is a hack-free solution. Also, there are existing user requests in the StableHLO repo for these features.
 
-### TanOP
+### TanOp
 
-Frameworks and Compilers both want TanOP.
-Jax has [`jnp.tan`](https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.tan.html), PyTorch has [`torch.tan`](https://pytorch.org/docs/stable/generated/torch.tan.html). On Compilers side, XLA has [`mhlo.tan`](https://github.com/tensorflow/mlir-hlo/blob/master/mhlo/IR/hlo_ops.td#L633).
-
-Adding TanOP to StableHLO is requested at ticket [#1](https://github.com/openxla/stablehlo/issues/1358)
+Frameworks and Compilers both want `tan` op.
+Jax has [`jnp.tan`](https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.tan.html), PyTorch has [`torch.tan`](https://pytorch.org/docs/stable/generated/torch.tan.html). On Compilers side, XLA has [`mhlo.tan`](https://github.com/tensorflow/mlir-hlo/blob/master/mhlo/IR/hlo_ops.td#L633). Open ticket for this request: [#1](https://github.com/openxla/stablehlo/issues/1358)
 
 ### CustomCallOp with typed FFI
 
-StableHLO CustomCallOp to support `API_VERSION_TYPED_FFI` as `StableHLO_CustomCallApiVersionAttr`. It will help to unify metadata under single `mlir::DictionaryAttr` and won't need to pass the metadata as strings. Similar to what [MHLO CustomCallOp](https://github.com/tensorflow/mlir-hlo/blob/master/mhlo/IR/hlo_ops.td#L2483) is already doing.
-open tickets for this request: [#2](https://github.com/openxla/stablehlo/issues/637), [#3](https://github.com/openxla/stablehlo/issues/741)
+StableHLO `custom_call` op to support `API_VERSION_TYPED_FFI` as an enum value [`StableHLO_CustomCallApiVersionAttr`](https://github.com/openxla/stablehlo/blob/04365f85cfbffe3d95ba2fb79ff34cd929d4a9a6/stablehlo/dialect/StablehloEnums.td#L88). It will help to unify metadata under single `mlir::DictionaryAttr`. Same as what [MHLO custom_call op](https://github.com/tensorflow/mlir-hlo/blob/master/mhlo/IR/hlo_ops.td#L2483) has already enabled. Open tickets for this request: [#2](https://github.com/openxla/stablehlo/issues/637), [#3](https://github.com/openxla/stablehlo/issues/741)
 
 ### Tuple-collectives (AllGatherOp, AllReduceOp, AllToAllOp)
 
-MHLO OPs already [support](https://github.com/tensorflow/mlir-hlo/blob/master/mhlo/IR/hlo_ops.td) **multi-operand** and **multi-result** which is in sync with xla semantics [`all_reduce`](https://openxla.org/xla/operation_semantics#allreduce) [`all-gather`](https://openxla.org/xla/operation_semantics#allgather) and [`alltoall`](https://openxla.org/xla/operation_semantics#alltoall) which supports multi-operand and multi-result.
-
-AllReduceOp support is requested at open ticket [#4](https://github.com/openxla/stablehlo/issues/1370).
-AllToAllOp support is requested at open ticket [#5](https://github.com/openxla/stablehlo/issues/574) and identified as a feature gap.
+MHLO ops already [support](https://github.com/tensorflow/mlir-hlo/blob/master/mhlo/IR/hlo_ops.td) **multi-operand** and **multi-result** which is in sync with xla semantics [`all_reduce`](https://openxla.org/xla/operation_semantics#allreduce) [`all_gather`](https://openxla.org/xla/operation_semantics#allgather) and [`all_to_all`](https://openxla.org/xla/operation_semantics#alltoall) which supports multi-operand and multi-result. `all_reduce` support is requested at open ticket [#4](https://github.com/openxla/stablehlo/issues/1370). `all_to_all` support is requested at open ticket [#5](https://github.com/openxla/stablehlo/issues/574) and identified as a feature gap.
 
 ## Proposed Specification
 
@@ -62,7 +57,7 @@ produces a `result` tensor. Depending on the element type, does the following:
 ```mlir
 // %operand: [-1.0, 0.0, 1.0]
 %result = "stablehlo.tan"(%operand) : (tensor<3xf32>) -> tensor<3xf32>
-// %result: [-0.76159416, 0.0, 0.76159416]
+// %result: [-1.55740772465, 0.0, 1.55740772465]
 ```
 
 ### custom_call
@@ -97,8 +92,8 @@ implementation-defined metadata.
 %results = "stablehlo.custom_call"(%input0) {
   call_target_name = "foo",
   has_side_effect = false,
-  backend_config = "bar",
-  api_version = 1 : i32,
+  backend_config = {bar = 42 : i32},
+  api_version = 4 : i32,
   called_computations = [@foo]
 } : (tensor<f64>) -> tensor<f64>
 ```
@@ -121,11 +116,11 @@ defined as follows:
 * `flattened_ids(replica_groups)`
   if `channel_id > 0 and use_global_device_ids = true`.
 
-Afterwards, within each `process_group`:
+Afterwards, within each process_group and for each i in [0, size(operands)]:
 
-* `operands@receiver = [operand@sender for sender in process_group]` for all
+* `operands[i]@receiver = [operand[i]@sender for sender in process_group]` for all
   `receiver` in `process_group`.
-* `results@process = concatenate(operands@process, all_gather_dim)` for all
+* `results[i]@process = concatenate(operands[i]@process, all_gather_dim)` for all
   `process` in `process_group`.
 
 #### Inputs
@@ -146,7 +141,7 @@ Afterwards, within each `process_group`:
 
 #### Constraints
 
-* (C1) `0 <= all_gather_dim < rank(operand)`.
+* (C1) `0 <= all_gather_dim < rank(operands...)`.
 * (C2) `is_unique(replica_groups)`.
 * (C3) `size(replica_groups)` is defined as:
   * `num_replicas` if `cross_replica` is used.
@@ -178,5 +173,4 @@ Afterwards, within each `process_group`:
 
 ### all_reduce
 
-
-### alltoall
+### all_to_all
