@@ -1,4 +1,4 @@
-# [RFC] Standardize TanOp, CustomCall with typed FFI, and tuple-collectives for HLO-StableHLO parity, used by JAX and PT/XLA
+# [RFC] Standardize TanOp, CustomCall with typed FFI, and tuple-collectives for HLO-StableHLO parity
 
 Status: Draft<br/>
 Initial version: 03/12/2024<br/>
@@ -7,20 +7,44 @@ Discussion thread: [GitHub](add PR Link)
 
 ## Motivation
 
-`TanOp`, `CustomCallOp` with typed FFI and tuple-collectives (`AllGatherOp`, `AllReduceOp`, `AllToAllOp`) features are already successful in MHLO. There are hacks in place to leverage these features (unregistered attributes, serialize strings). Standardizing these StableHLO ops will ensure HLO-StableHLO parity and is a hack-free solution. Also, there are existing user requests in the StableHLO repo for these features.
+`tan` op, `custom_call` op with typed FFI and tuple-collectives ops
+(`all_gather`, `all_reduce`, `all_to_all`) supports features which are already
+successful in MHLO and being used by JAX and PT/XLA. Standardizing StableHLO ops
+will ensure HLO-StableHLO feature parity. There are hacks in place to leverage
+these features (unregistered attributes, serialize strings) and standardizing
+the ops is a hack-free solution. Also, there are existing user requests in the
+StableHLO repo for these features.
 
 ### TanOp
 
 Frameworks and Compilers both want `tan` op.
-Jax has [`jnp.tan`](https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.tan.html), PyTorch has [`torch.tan`](https://pytorch.org/docs/stable/generated/torch.tan.html). On Compilers side, XLA has [`mhlo.tan`](https://github.com/tensorflow/mlir-hlo/blob/master/mhlo/IR/hlo_ops.td#L633). Open ticket for this request: [#1](https://github.com/openxla/stablehlo/issues/1358)
+Jax has [`jnp.tan`](https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.tan.html),
+PyTorch has [`torch.tan`](https://pytorch.org/docs/stable/generated/torch.tan.html).
+On Compilers side, XLA has [`mhlo.tan`](https://github.com/tensorflow/mlir-hlo/blob/master/mhlo/IR/hlo_ops.td#L633).
+StableHLO doesn't support `tan` op. Open ticket for this request
+[#1](https://github.com/openxla/stablehlo/issues/1358)
 
 ### CustomCallOp with typed FFI
 
-StableHLO `custom_call` op to support `API_VERSION_TYPED_FFI` as an enum value [`StableHLO_CustomCallApiVersionAttr`](https://github.com/openxla/stablehlo/blob/04365f85cfbffe3d95ba2fb79ff34cd929d4a9a6/stablehlo/dialect/StablehloEnums.td#L88). It will help to unify metadata under single `mlir::DictionaryAttr`. Same as what [MHLO custom_call op](https://github.com/tensorflow/mlir-hlo/blob/master/mhlo/IR/hlo_ops.td#L2483) has already enabled. Open tickets for this request: [#2](https://github.com/openxla/stablehlo/issues/637), [#3](https://github.com/openxla/stablehlo/issues/741)
+StableHLO `custom_call` op to support `API_VERSION_TYPED_FFI` as an enum value [`StableHLO_CustomCallApiVersionAttr`](https://github.com/openxla/stablehlo/blob/04365f85cfbffe3d95ba2fb79ff34cd929d4a9a6/stablehlo/dialect/StablehloEnums.td#L88).
+It will help to unify metadata under single `mlir::DictionaryAttr`. Same as what
+[MHLO custom_call op](https://github.com/tensorflow/mlir-hlo/blob/master/mhlo/IR/hlo_ops.td#L2483)
+has already enabled. Open tickets for this request: [#2](https://github.com/openxla/stablehlo/issues/637),
+[#3](https://github.com/openxla/stablehlo/issues/741)
 
 ### Tuple-collectives (AllGatherOp, AllReduceOp, AllToAllOp)
 
-MHLO ops already [support](https://github.com/tensorflow/mlir-hlo/blob/master/mhlo/IR/hlo_ops.td) **multi-operand** and **multi-result** which is in sync with xla semantics [`all_reduce`](https://openxla.org/xla/operation_semantics#allreduce) [`all_gather`](https://openxla.org/xla/operation_semantics#allgather) and [`all_to_all`](https://openxla.org/xla/operation_semantics#alltoall) which supports multi-operand and multi-result. `all_reduce` support is requested at open ticket [#4](https://github.com/openxla/stablehlo/issues/1370). `all_to_all` support is requested at open ticket [#5](https://github.com/openxla/stablehlo/issues/574) and identified as a feature gap.
+StableHLO tuple-collective ops support is limited to **single-operand** and **single-result**.
+MHLO ops [support](https://github.com/tensorflow/mlir-hlo/blob/master/mhlo/IR/hlo_ops.td)
+**multi-operand** and **multi-result** which is in sync with xla semantics
+[`all_reduce`](https://openxla.org/xla/operation_semantics#allreduce)
+[`all_gather`](https://openxla.org/xla/operation_semantics#allgather) and
+[`all_to_all`](https://openxla.org/xla/operation_semantics#alltoall) which
+supports multi-operand and multi-result. `all_reduce` support is requested
+at open ticket [#4](https://github.com/openxla/stablehlo/issues/1370).
+`all_to_all` support is requested at open ticket
+[#5](https://github.com/openxla/stablehlo/issues/574) and identified as a feature
+gap.
 
 ## Proposed Specification
 
