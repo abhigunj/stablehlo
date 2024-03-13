@@ -1,4 +1,4 @@
-# [RFC] Standardize TanOp, CustomCall with typed FFI, and tuple-collectives for HLO-StableHLO parity
+# [RFC] Standardize TanOp, CustomCallOp with typed FFI, and tuple-collectives ops
 
 Status: Draft<br/>
 Initial version: 03/12/2024<br/>
@@ -7,9 +7,9 @@ Discussion thread: [GitHub](add PR Link)
 
 ## Motivation
 
-`tan` op, `custom_call` op with typed FFI and tuple-collectives ops
-(`all_gather`, `all_reduce`, `all_to_all`) supports features which are already
-successful in MHLO and being used by JAX and PT/XLA. Standardizing StableHLO ops
+MHLO `tan` op, `custom_call` op with typed FFI and tuple-collectives ops
+(`all_gather`, `all_reduce`, `all_to_all`) supports features which are
+successfully being used by JAX and PT/XLA. Standardizing StableHLO ops
 will ensure HLO-StableHLO feature parity. There are hacks in place to leverage
 these features (unregistered attributes, serialize strings) and standardizing
 the ops is a hack-free solution. Also, there are existing user requests in the
@@ -182,19 +182,178 @@ Afterwards, within each process_group and for each i in [0, size(operands)]:
 ```mlir
 // num_replicas: 2
 // num_partitions: 1
-// %operand1@(0, 0): [[1, 2], [3, 4]]
-// %operand1@(1, 0): [[5, 6], [7, 8]]
-%results = "stablehlo.all_gather"(%operand1) {
+// %operand@(0, 0): [[1, 2], [3, 4]]
+// %operand@(1, 0): [[5, 6], [7, 8]]
+%result = "stablehlo.all_gather"(%operand) {
   all_gather_dim = 1 : i64,
   replica_groups = dense<[[0, 1]]> : tensor<1x2xi64>,
   // channel_id = 0
   channel_handle = #stablehlo.channel_handle<handle = 0, type = 0>
   // use_global_device_ids = false
 } : (tensor<2x2xi64>) -> tensor<2x4xi64>
-// %result1@(0, 0): [[1, 2, 5, 6], [3, 4, 7, 8]]
-// %result1@(1, 0): [[1, 2, 5, 6], [3, 4, 7, 8]]
+// %result@(0, 0): [[1, 2, 5, 6], [3, 4, 7, 8]]
+// %result@(1, 0): [[1, 2, 5, 6], [3, 4, 7, 8]]
 ```
 
 ### all_reduce
 
+#### Semantics
+
+Within each process group in the StableHLO process grid, applies a reduction
+function `computation` to the values of the `operands` tensors from each process
+and produces a `results` tensors.
+
+The operation splits the StableHLO process grid into `process_groups` which is
+defined as follows:
+
+* `cross_replica(replica_groups)`
+  if `channel_id <= 0 and use_global_device_ids = false`.
+* `cross_replica_and_partition(replica_groups)`
+  if `channel_id > 0 and use_global_device_ids = false`.
+* `flattened_ids(replica_groups)`
+  if `channel_id > 0 and use_global_device_ids = true`.
+
+Afterwards, within each `process_group` and for each i in [0, size(operands)]:
+
+* `results[i]@process[results[i]_index] = exec(schedule)` for some binary tree
+  `schedule` where:
+  * `exec(node)` = `computation(exec(node.left), exec(node.right))`.
+  * `exec(leaf)` = `leaf.value`.
+* `schedule` is an implementation-defined binary tree whose in-order
+  traversal is `to_destination_type(operands[i]@process_group...[results[i]_index],
+  type(func_inputs(computation)[0]))`.
+
+#### Inputs
+
+| Label | Name                    | Type                                                             | Constraints |
+|-------|-------------------------|------------------------------------------------------------------|-------------|
+| (I1)  | `operands`               | variadic tensors or per-tensor quantized tensors                            | (C5), (C6)  |
+| (I2)  | `replica_groups`        | variadic number of 1-dimensional tensor constants of type `si64` | (C1-C3)     |
+| (I3)  | `channel_id`            | constant of type `si64`                                          | (C4)        |
+| (I4)  | `use_global_device_ids` | constant of type `i1`                                            | (C4)        |
+| (I5)  | `computation`           | function                                                         | (C5)        |
+
+#### Outputs
+
+| Name     | Type                                  | Constraints |
+|----------|---------------------------------------|-------------|
+| `results` | variadic tensors or per-tensor quantized tensors | (C6-C7)     |
+
+#### Constraints
+
+* (C1) `is_unique(replica_groups)`.
+* (C2) `size(replica_groups)` is defined as:
+  * `num_replicas` if `cross_replica` is used.
+  * `num_replicas` if `cross_replica_and_partition` is used.
+  * `num_processes` if `flattened_ids` is used.
+* (C3) `0 <= replica_groups < size(replica_groups)`.
+* (C4) If `use_global_device_ids = true`, then `channel_id > 0`.
+* (C5) `computation` has type `(tensor<E>, tensor<E>) -> (tensor<E>)` where
+       `is_promotable(element_type(operand), E)`.
+* (C6) `shape(results...) = shape(operands...)`.
+* (C7) `element_type(results...) = E`.
+
+#### Examples
+
+```mlir
+// num_replicas: 2
+// num_partitions: 1
+// %operand@(0, 0): [1, 2, 3, 4]
+// %operand@(1, 0): [5, 6, 7, 8]
+%result = "stablehlo.all_reduce"(%operand) ({
+  ^bb0(%arg0: tensor<i64>, %arg1: tensor<i64>):
+    %0 = "stablehlo.add"(%arg0, %arg1) : (tensor<i64>, tensor<i64>) -> tensor<i64>
+    "stablehlo.return"(%0) : (tensor<i64>) -> ()
+}) {
+  replica_groups = dense<[[0, 1]]> : tensor<1x2xi64>,
+  channel_handle = #stablehlo.channel_handle<handle = 0, type = 0>
+} : (tensor<4xi64>) -> tensor<4xi64>
+// %result@(0, 0): [6, 8, 10, 12]
+// %result@(1, 0): [6, 8, 10, 12]
+```
+
 ### all_to_all
+
+#### Semantics
+
+![](images/spec/all_to_all.svg)
+
+Within each process group in the StableHLO process grid, splits the values of
+the `operands` tensors along `split_dimension` into parts, scatters the split
+parts between the processes, concatenates the scattered parts along
+`concat_dimension` and produces a `results` tensors.
+
+The operation splits the StableHLO process grid into `process_groups` which is
+defined as follows:
+
+* `cross_replica(replica_groups)` if `channel_id <= 0`.
+* `cross_partition(replica_groups)` if `channel_id > 0`.
+
+Afterwards, within each `process_group` and for each i in [0, size(operands)]:
+
+* `split_parts@sender = split(operands[i]@sender, split_count, split_dimension)`
+  for all `sender` in `process_group`.
+* `scattered_parts@receiver = [split_parts@sender[receiver_index] for
+  sender in process_group]` where
+  `receiver_index = process_group.index(receiver)`.
+* `results[i]@process = concatenate(scattered_parts@process, concat_dimension)`.
+
+#### Inputs
+
+| Label | Name               | Type                                         | Constraints            |
+|-------|--------------------|----------------------------------------------|------------------------|
+| (I1)  | `operands`          | tensors or per-tensor quantized tensors        | (C1-C3), (C9)          |
+| (I2)  | `split_dimension`  | constant of type `si64`                      | (C1), (C2), (C9)       |
+| (I3)  | `concat_dimension` | constant of type `si64`                      | (C3), (C9)             |
+| (I4)  | `split_count`      | constant of type `si64`                      | (C2), (C4), (C8), (C9) |
+| (I5)  | `replica_groups`   | 2-dimensional tensor constant of type `si64` | (C5-C8)                |
+| (I6)  | `channel_id`       | constant of type `si64`                      |                        |
+
+#### Outputs
+
+| Name     | Type                                  | Constraints |
+|----------|---------------------------------------|-------------|
+| `results` | tensors or per-tensor quantized tensors | (C9)        |
+
+#### Constraints
+
+* (C1) `0 <= split_dimension < rank(operands...)`.
+* (C2) `dim(operands..., split_dimension) % split_count = 0`.
+* (C3) `0 <= concat_dimension < rank(operands...)`.
+* (C4) `0 < split_count`.
+* (C5) `is_unique(replica_groups)`.
+* (C6) `size(replica_groups)` is defined as:
+  * `num_replicas` if `cross_replica` is used.
+  * `num_partitions` if `cross_partition` is used.
+* (C7) `0 <= replica_groups < size(replica_groups)`.
+* (C8) `dim(replica_groups, 1) = split_count`.
+* (C9) `type(results...) = type(operands...)` except:
+  * `dim(results..., split_dimension) =
+    dim(operands..., split_dimension) / split_count`.
+  * `dim(results..., concat_dimension) =
+    dim(operands..., concat_dimension) * split_count`.
+
+#### Examples
+
+```mlir
+// num_replicas: 2
+// num_partitions: 1
+// %operand@(0, 0): [[1, 2, 3, 4],
+//                   [5, 6, 7, 8]]
+// %operand@(1, 0): [[9, 10, 11, 12],
+//                   [13, 14, 15, 16]]
+%result = "stablehlo.all_to_all"(%operand) {
+  split_dimension = 1 : i64,
+  concat_dimension = 0 : i64,
+  split_count = 2 : i64,
+  replica_groups = dense<[[0, 1]]> : tensor<1x2xi64>
+} : (tensor<2x4xi64>) -> tensor<4x2xi64>
+// %result@(0, 0): [[1, 2],
+//                  [5, 6],
+//                  [9, 10],
+//                  [13, 14]]
+// %result@(1, 0): [[3, 4],
+//                  [7, 8],
+//                  [11, 12],
+//                  [15, 16]]
+```
