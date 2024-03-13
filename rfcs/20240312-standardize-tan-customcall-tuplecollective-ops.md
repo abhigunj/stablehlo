@@ -7,50 +7,32 @@ Discussion thread: [GitHub](add PR Link)
 
 ## Motivation
 
-MHLO `tan` op, `custom_call` op with typed FFI and tuple-collectives ops
-(`all_gather`, `all_reduce`, `all_to_all`) supports features which are
-successfully being used by JAX and PT/XLA. Standardizing StableHLO ops
-will ensure HLO-StableHLO feature parity. There are hacks in place to leverage
-these features (unregistered attributes, serialize strings) and standardizing
-the ops is a hack-free solution. Also, there are existing user requests in the
-StableHLO repo for these features.
+Several features have been added to MHLO in the past year, which frameworks want
+to leverage and members of the community have made requests for them as well.
+This includes: `TanOp`, `CustomCallOp` with typed FFI (dictionary), and
+tuple-collective ops (`AllGatherOp`, `AllReduceOp`, `AllToAllOp` with variadic
+operands/results). Some of these features are being used today with various
+workarounds -- unregistered attributes, serializing dictionary as string,
+custom_calls. None of these approaches are stable, so we propose adding these
+ops/features to the StableHLO spec so they can be used safely by the community.
 
-### TanOp
+## TanOp
+
+### Rationale
 
 Frameworks and Compilers both want `tan` op.
 Jax has [`jnp.tan`](https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.tan.html),
 PyTorch has [`torch.tan`](https://pytorch.org/docs/stable/generated/torch.tan.html).
 On Compilers side, XLA has [`mhlo.tan`](https://github.com/tensorflow/mlir-hlo/blob/master/mhlo/IR/hlo_ops.td#L633).
-StableHLO doesn't support `tan` op. Open ticket for this request
-[#1](https://github.com/openxla/stablehlo/issues/1358)
+StableHLO doesn't support `tan` op, but there is an open ticket which requests
+adding this feature in
+[#1358](https://github.com/openxla/stablehlo/issues/1358)
 
-### CustomCallOp with typed FFI
+### Proposed Specification
 
-StableHLO `custom_call` op to support `API_VERSION_TYPED_FFI` as an enum value [`StableHLO_CustomCallApiVersionAttr`](https://github.com/openxla/stablehlo/blob/04365f85cfbffe3d95ba2fb79ff34cd929d4a9a6/stablehlo/dialect/StablehloEnums.td#L88).
-It will help to unify metadata under single `mlir::DictionaryAttr`. Same as what
-[MHLO custom_call op](https://github.com/tensorflow/mlir-hlo/blob/master/mhlo/IR/hlo_ops.td#L2483)
-has already enabled. Open tickets for this request: [#2](https://github.com/openxla/stablehlo/issues/637),
-[#3](https://github.com/openxla/stablehlo/issues/741)
+#### tan
 
-### Tuple-collectives (AllGatherOp, AllReduceOp, AllToAllOp)
-
-StableHLO tuple-collective ops support is limited to **single-operand** and **single-result**.
-MHLO ops [support](https://github.com/tensorflow/mlir-hlo/blob/master/mhlo/IR/hlo_ops.td)
-**multi-operand** and **multi-result** which is in sync with xla semantics
-[`all_reduce`](https://openxla.org/xla/operation_semantics#allreduce)
-[`all_gather`](https://openxla.org/xla/operation_semantics#allgather) and
-[`all_to_all`](https://openxla.org/xla/operation_semantics#alltoall) which
-supports multi-operand and multi-result. `all_reduce` support is requested
-at open ticket [#4](https://github.com/openxla/stablehlo/issues/1370).
-`all_to_all` support is requested at open ticket
-[#5](https://github.com/openxla/stablehlo/issues/574) and identified as a feature
-gap.
-
-## Proposed Specification
-
-### tan
-
-#### Semantics
+##### Semantics
 
 Performs element-wise tangent operation on `operand` tensor and
 produces a `result` tensor. Depending on the element type, does the following:
@@ -60,23 +42,23 @@ produces a `result` tensor. Depending on the element type, does the following:
 * For quantized types:
   * `dequantize_op_quantize(tan, operand, type(result))`.
 
-#### Inputs
+###### Inputs
 
 | Label | Name      | Type                                                                    | Constraints |
 |-------|-----------|-------------------------------------------------------------------------|-------------|
 | (I1)  | `operand` | tensor of floating-point or complex type or per-tensor quantized tensor | (C1)        |
 
-#### Outputs
+###### Outputs
 
 | Name     | Type                                                                    | Constraints |
 |----------|-------------------------------------------------------------------------|-------------|
 | `result` | tensor of floating-point or complex type or per-tensor quantized tensor | (C1)        |
 
-#### Constraints
+###### Constraints
 
 * (C1) `baseline_type(operand) = baseline_type(result)`.
 
-#### Examples
+###### Examples
 
 ```mlir
 // %operand: [-1.0, 0.0, 1.0]
@@ -84,33 +66,45 @@ produces a `result` tensor. Depending on the element type, does the following:
 // %result: [-1.55740772465, 0.0, 1.55740772465]
 ```
 
-### custom_call
+## CustomCallOp with typed FFI
 
-#### Semantics
+### Rationale
+
+StableHLO `custom_call` op to support `backend_config` dictionary.
+It will help to unify metadata under single `mlir::DictionaryAttr`. Same as what
+[MHLO custom_call op](https://github.com/tensorflow/mlir-hlo/blob/master/mhlo/IR/hlo_ops.td#L2483)
+has already enabled. Open tickets for this request: [#637](https://github.com/openxla/stablehlo/issues/637),
+[#741](https://github.com/openxla/stablehlo/issues/741)
+
+### Proposed Specification
+
+#### custom_call
+
+##### Semantics
 
 Encapsulates an implementation-defined operation `call_target_name` that takes
 `inputs` and `called_computations` and produces `results`. `has_side_effect`,
 `backend_config` and `api_version` may be used to provide additional
 implementation-defined metadata.
 
-#### Inputs
+###### Inputs
 
 | Label | Name                  | Type                                          |
 |-------|-----------------------|-----------------------------------------------|
 | (I1)  | `inputs`              | variadic number of values                     |
 | (I2)  | `call_target_name`    | constant of type `string`                     |
 | (I3)  | `has_side_effect`     | constant of type `i1`                         |
-| (I4)  | `backend_config`      | constant of type `string`                     |
+| (I4)  | `backend_config`      | constant of type `string` or attribute dictionary                   |
 | (I5)  | `api_version`         | constant of type `si32`                       |
 | (I6)  | `called_computations` | variadic number of constants of type `string` |
 
-#### Outputs
+###### Outputs
 
 | Name      | Type                      |
 |-----------|---------------------------|
 | `results` | variadic number of values |
 
-#### Examples
+###### Examples
 
 ```mlir
 %results = "stablehlo.custom_call"(%input0) {
@@ -122,13 +116,35 @@ implementation-defined metadata.
 } : (tensor<f64>) -> tensor<f64>
 ```
 
-### all_gather
+## Tuple-collectives (AllGatherOp, AllReduceOp, AllToAllOp)
 
-#### Semantics
+### Rationale
+
+StableHLO tuple-collective ops support is limited to **single-operand** and **single-result**.
+[MHLO ops](https://github.com/tensorflow/mlir-hlo/blob/master/mhlo/IR/hlo_ops.td)
+supports
+**multi-operand** and **multi-result** which is in sync with XLA semantics and
+horizontal scaling
+[`all_reduce`](https://openxla.org/xla/operation_semantics#allreduce)
+[`all_gather`](https://openxla.org/xla/operation_semantics#allgather) and
+[`all_to_all`](https://openxla.org/xla/operation_semantics#alltoall) which
+supports multi-operand and multi-result. `all_reduce` support is requested
+in [#1370](https://github.com/openxla/stablehlo/issues/1370) is relied on by
+PyTorch/XLA today via XlaBuilder.
+`all_to_all` support is requested in
+[#574](https://github.com/openxla/stablehlo/issues/574) and identified as a feature
+gap.
+
+### Proposed Specifications
+
+#### all_gather
+
+##### Semantics
 
 Within each process group in the StableHLO process grid, concatenates the values
 of the `operands` tensors from each process along `all_gather_dim` and produces a
-`results` tensors.
+`results` tensors. When multiple `operands` are specified, the `all_gather` is
+performed on each operand.
 
 The operation splits the StableHLO process grid into `process_groups` which is
 defined as follows:
@@ -147,23 +163,23 @@ Afterwards, within each process_group and for each i in [0, size(operands)]:
 * `results[i]@process = concatenate(operands[i]@process, all_gather_dim)` for all
   `process` in `process_group`.
 
-#### Inputs
+###### Inputs
 
 | Label | Name                    | Type                                         | Constraints |
 |-------|-------------------------|----------------------------------------------|-------------|
-| (I1)  | `operands`               | variadic tensors or per-tensor quantized tensors        | (C1), (C6)  |
+| (I1)  | `operands`               | variadic number of tensors or per-tensor quantized tensors        | (C1), (C6)  |
 | (I2)  | `all_gather_dim`        | constant of type `si64`                      | (C1), (C6)  |
 | (I3)  | `replica_groups`        | 2-dimensional tensor constant of type `si64` | (C2-C4)     |
 | (I4)  | `channel_id`            | constant of type `si64`                      | (C5)        |
 | (I5)  | `use_global_device_ids` | constant of type `i1`                        | (C5)        |
 
-#### Outputs
+###### Outputs
 
 | Name     | Type                                  | Constraints |
 |----------|---------------------------------------|-------------|
-| `results` | variadic tensors or per-tensor quantized tensors | (C6)        |
+| `results` | variadic number of tensors or per-tensor quantized tensors | (C6)        |
 
-#### Constraints
+###### Constraints
 
 * (C1) `0 <= all_gather_dim < rank(operands...)`.
 * (C2) `is_unique(replica_groups)`.
@@ -177,7 +193,7 @@ Afterwards, within each process_group and for each i in [0, size(operands)]:
   * `dim(results..., all_gather_dim) =
     dim(operands..., all_gather_dim) * dim(process_groups, 1)`.
 
-#### Examples
+###### Examples
 
 ```mlir
 // num_replicas: 2
@@ -195,13 +211,14 @@ Afterwards, within each process_group and for each i in [0, size(operands)]:
 // %result@(1, 0): [[1, 2, 5, 6], [3, 4, 7, 8]]
 ```
 
-### all_reduce
+#### all_reduce
 
-#### Semantics
+##### Semantics
 
 Within each process group in the StableHLO process grid, applies a reduction
 function `computation` to the values of the `operands` tensors from each process
-and produces a `results` tensors.
+and produces a `results` tensors. When multiple `operands` are specified, the
+`all_reduce` is performed on each operand.
 
 The operation splits the StableHLO process grid into `process_groups` which is
 defined as follows:
@@ -223,23 +240,23 @@ Afterwards, within each `process_group` and for each i in [0, size(operands)]:
   traversal is `to_destination_type(operands[i]@process_group...[results[i]_index],
   type(func_inputs(computation)[0]))`.
 
-#### Inputs
+###### Inputs
 
 | Label | Name                    | Type                                                             | Constraints |
 |-------|-------------------------|------------------------------------------------------------------|-------------|
-| (I1)  | `operands`               | variadic tensors or per-tensor quantized tensors                            | (C5), (C6)  |
+| (I1)  | `operands`               | variadic number of tensors or per-tensor quantized tensors                            | (C5), (C6)  |
 | (I2)  | `replica_groups`        | variadic number of 1-dimensional tensor constants of type `si64` | (C1-C3)     |
 | (I3)  | `channel_id`            | constant of type `si64`                                          | (C4)        |
 | (I4)  | `use_global_device_ids` | constant of type `i1`                                            | (C4)        |
 | (I5)  | `computation`           | function                                                         | (C5)        |
 
-#### Outputs
+###### Outputs
 
 | Name     | Type                                  | Constraints |
 |----------|---------------------------------------|-------------|
-| `results` | variadic tensors or per-tensor quantized tensors | (C6-C7)     |
+| `results` | variadic number of tensors or per-tensor quantized tensors | (C6-C7)     |
 
-#### Constraints
+###### Constraints
 
 * (C1) `is_unique(replica_groups)`.
 * (C2) `size(replica_groups)` is defined as:
@@ -253,7 +270,7 @@ Afterwards, within each `process_group` and for each i in [0, size(operands)]:
 * (C6) `shape(results...) = shape(operands...)`.
 * (C7) `element_type(results...) = E`.
 
-#### Examples
+###### Examples
 
 ```mlir
 // num_replicas: 2
@@ -272,16 +289,17 @@ Afterwards, within each `process_group` and for each i in [0, size(operands)]:
 // %result@(1, 0): [6, 8, 10, 12]
 ```
 
-### all_to_all
+#### all_to_all
 
-#### Semantics
+##### Semantics
 
 ![](images/spec/all_to_all.svg)
 
 Within each process group in the StableHLO process grid, splits the values of
 the `operands` tensors along `split_dimension` into parts, scatters the split
 parts between the processes, concatenates the scattered parts along
-`concat_dimension` and produces a `results` tensors.
+`concat_dimension` and produces a `results` tensors. When multiple `operands`
+are specified, the `all_to_all` is performed on each operand.
 
 The operation splits the StableHLO process grid into `process_groups` which is
 defined as follows:
@@ -298,24 +316,24 @@ Afterwards, within each `process_group` and for each i in [0, size(operands)]:
   `receiver_index = process_group.index(receiver)`.
 * `results[i]@process = concatenate(scattered_parts@process, concat_dimension)`.
 
-#### Inputs
+###### Inputs
 
 | Label | Name               | Type                                         | Constraints            |
 |-------|--------------------|----------------------------------------------|------------------------|
-| (I1)  | `operands`          | tensors or per-tensor quantized tensors        | (C1-C3), (C9)          |
+| (I1)  | `operands`          | variadic number of tensors or per-tensor quantized tensors        | (C1-C3), (C9)          |
 | (I2)  | `split_dimension`  | constant of type `si64`                      | (C1), (C2), (C9)       |
 | (I3)  | `concat_dimension` | constant of type `si64`                      | (C3), (C9)             |
 | (I4)  | `split_count`      | constant of type `si64`                      | (C2), (C4), (C8), (C9) |
 | (I5)  | `replica_groups`   | 2-dimensional tensor constant of type `si64` | (C5-C8)                |
 | (I6)  | `channel_id`       | constant of type `si64`                      |                        |
 
-#### Outputs
+###### Outputs
 
 | Name     | Type                                  | Constraints |
 |----------|---------------------------------------|-------------|
-| `results` | tensors or per-tensor quantized tensors | (C9)        |
+| `results` | variadic number of tensors or per-tensor quantized tensors | (C9)        |
 
-#### Constraints
+###### Constraints
 
 * (C1) `0 <= split_dimension < rank(operands...)`.
 * (C2) `dim(operands..., split_dimension) % split_count = 0`.
@@ -333,7 +351,7 @@ Afterwards, within each `process_group` and for each i in [0, size(operands)]:
   * `dim(results..., concat_dimension) =
     dim(operands..., concat_dimension) * split_count`.
 
-#### Examples
+###### Examples
 
 ```mlir
 // num_replicas: 2
