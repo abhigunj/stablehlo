@@ -713,11 +713,11 @@ defined as follows:
 * `flattened_ids(replica_groups)`
   if `channel_id > 0 and use_global_device_ids = true`.
 
-Afterwards, within each process_group and for each i in [0, size(operands)]:
+Afterwards, within each `process_group`:
 
-* `operands[i]@receiver = [operand[i]@sender for sender in process_group]` for all
+* `operands...@receiver = [operand@sender for sender in process_group]` for all
   `receiver` in `process_group`.
-* `results[i]@process = concatenate(operands[i]@process, all_gather_dim)` for all
+* `results...@process = concatenate(operands...@process, all_gather_dim)` for all
   `process` in `process_group`.
 
 #### Inputs
@@ -789,14 +789,14 @@ defined as follows:
 * `flattened_ids(replica_groups)`
   if `channel_id > 0 and use_global_device_ids = true`.
 
-Afterwards, within each `process_group` and for each i in [0, size(operands)]:
+Afterwards, within each `process_group`:
 
-* `results[i]@process[results[i]_index] = exec(schedule)` for some binary tree
+* `results...@process[result_index] = exec(schedule)` for some binary tree
   `schedule` where:
   * `exec(node)` = `computation(exec(node.left), exec(node.right))`.
   * `exec(leaf)` = `leaf.value`.
 * `schedule` is an implementation-defined binary tree whose in-order
-  traversal is `to_destination_type(operands[i]@process_group...[results[i]_index],
+  traversal is `to_destination_type(operands...@process_group...[result_index],
   type(func_inputs(computation)[0]))`.
 
 #### Inputs
@@ -868,14 +868,14 @@ defined as follows:
 * `cross_replica(replica_groups)` if `channel_id <= 0`.
 * `cross_partition(replica_groups)` if `channel_id > 0`.
 
-Afterwards, within each `process_group` and for each i in [0, size(operands)]:
+Afterwards, within each `process_group`:
 
-* `split_parts@sender = split(operands[i]@sender, split_count, split_dimension)`
+* `split_parts...@sender = split(operands...@sender, split_count, split_dimension)`
   for all `sender` in `process_group`.
-* `scattered_parts@receiver = [split_parts@sender[receiver_index] for
+* `scattered_parts...@receiver = [split_parts...@sender[receiver_index] for
   sender in process_group]` where
   `receiver_index = process_group.index(receiver)`.
-* `results[i]@process = concatenate(scattered_parts@process, concat_dimension)`.
+* `results...@process = concatenate(scattered_parts...@process, concat_dimension)`.
 
 #### Inputs
 
@@ -2412,6 +2412,11 @@ Encapsulates an implementation-defined operation `call_target_name` that takes
 `backend_config` and `api_version` may be used to provide additional
 implementation-defined metadata.
 
+At the moment, this operation contains a fairly disorganized collection of
+metadata which reflects organic evolution of its counterpart operation in
+the XLA compiler. In the future, we are planning to unify this metadata
+([#741](https://github.com/openxla/stablehlo/issues/741)).
+
 #### Inputs
 
 | Label | Name                  | Type                                          |
@@ -2419,7 +2424,7 @@ implementation-defined metadata.
 | (I1)  | `inputs`              | variadic number of values                     |
 | (I2)  | `call_target_name`    | constant of type `string`                     |
 | (I3)  | `has_side_effect`     | constant of type `i1`                         |
-| (I4)  | `backend_config`      | constant of type `string` or attribute dictionary                   |
+| (I4)  | `backend_config`      | constant of type `string` dictionary with key of type `string` and values of type `Value`                   |
 | (I5)  | `api_version`         | constant of type `si32`                       |
 | (I6)  | `called_computations` | variadic number of constants of type `string` |
 
