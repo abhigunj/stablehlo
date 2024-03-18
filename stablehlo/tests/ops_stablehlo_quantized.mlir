@@ -1001,7 +1001,6 @@ func.func @bitcast_convert_c1(%arg0: tensor<1x2x2x!quant.uniform<i8<-128:127>:f3
   func.return
 }
 
-
 // -----
 
 func.func @broadcast_in_dim_c1(
@@ -1021,7 +1020,6 @@ func.func @broadcast_in_dim_c1(
   } : (tensor<1x2x1x!quant.uniform<i8<-128:127>:f32, 0.2:-30>>) -> tensor<1x2x3x2x!quant.uniform<i8<-128:127>:f32, 0.2:-20>>
   func.return
 }
-
 
 // -----
 
@@ -1079,7 +1077,6 @@ func.func @transpose_c4(%arg0: tensor<1x2x2x!quant.uniform<i8<-128:127>:f32:0, {
   } : (tensor<1x2x2x!quant.uniform<i8<-128:127>:f32:0, {0.1:-30, 0.5:-20}>>) -> tensor<1x2x2x!quant.uniform<i8<-128:127>:f32:1, {0.1:-30, 0.5:-20}>>
   func.return
 }
-
 
 // -----
 
