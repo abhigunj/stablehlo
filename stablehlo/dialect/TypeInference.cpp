@@ -65,6 +65,41 @@ limitations under the License.
 
 namespace mlir {
 namespace hlo {
+namespace {
+//===----------------------------------------------------------------------===//
+// Utils for quantization specific verifications
+//===----------------------------------------------------------------------===//
+template <typename T>
+bool allQuantized(ArrayRef<Type> typeRange) {
+  return llvm::all_of(typeRange, [&](Type val) {
+    return val.cast<ShapedType>().getElementType().isa<T>();
+  });
+}
+
+template <typename T>
+bool noneQuantized(ArrayRef<Type> typeRange) {
+  return llvm::all_of(typeRange, [&](Type val) {
+    return !val.cast<ShapedType>().getElementType().isa<T>();
+  });
+}
+
+bool perTensorQuantScaleZeroCheck(Value operand, Value result){
+  Type operandTy = operand.getType();
+  Type resultTy = result.getType();
+  llvm::SmallVector<Type, 2> typeEntriesPerTensor{operandTy, resultTy};
+  if(allQuantized<quant::UniformQuantizedType>(typeEntriesPerTensor)){
+    auto operandQTy = operandTy.cast<quant::UniformQuantizedType>();
+    auto resultQTy = resultTy.cast<quant::UniformQuantizedType>();
+    if (operandQTy.getScale() != resultQTy.getScale() ||
+      operandQTy.getZeroPoint() != resultQTy.getZeroPoint()){
+        return false;
+      }
+  }
+  return true;
+}
+
+
+}  // namespace
 
 //===----------------------------------------------------------------------===//
 // Utils for shape functions.
@@ -3227,6 +3262,7 @@ LogicalResult verifyBroadcastInDimOp(std::optional<Location> location,
             resultDimSize, ")");
     }
   }
+
 
   // broadcast_in_dim_c6
   if (auto resultQType = getElementTypeOrSelf(result.getType())
