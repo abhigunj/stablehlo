@@ -85,7 +85,7 @@ bool noneQuantized(ArrayRef<Type> typeRange) {
 
 // Try to match scale and zero_point for per_tensor quantized inputs
 LogicalResult sameQuantScaleZeroPoint(std::optional<Location> location,
-                                   Type operandTy, Type resultTy) {
+                                      Type operandTy, Type resultTy) {
   llvm::SmallVector<Type, 2> entries{operandTy, resultTy};
   if (allQuantized<quant::UniformQuantizedType>(entries)) {
     auto operandQTy =
@@ -3239,8 +3239,8 @@ LogicalResult verifyBroadcastInDimOp(std::optional<Location> location,
   // broadcast_in_dim_c1
   // part of broadcast_in_dim_c1 already verified by
   // Trait HLO_CompatibleOperandsAndResultElementType
-  if (failed(
-          sameQuantScaleZeroPoint(location, operand.getType(), result.getType())))
+  if (failed(sameQuantScaleZeroPoint(location, operand.getType(),
+                                     result.getType())))
     return failure();
 
   // broadcast_in_dim_c2
@@ -4058,8 +4058,8 @@ LogicalResult verifyReshapeOp(std::optional<Location> location, Value operand,
   // reshape_c1
   // part of reshape_c1 already verified by
   // Trait HLO_CompatibleOperandsAndResultElementType
-  if (failed(
-          sameQuantScaleZeroPoint(location, operand.getType(), result.getType())))
+  if (failed(sameQuantScaleZeroPoint(location, operand.getType(),
+                                     result.getType())))
     return failure();
 
   return success();
