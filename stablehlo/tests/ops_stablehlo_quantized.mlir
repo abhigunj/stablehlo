@@ -1001,6 +1001,28 @@ func.func @bitcast_convert_c1(%arg0: tensor<1x2x2x!quant.uniform<i8<-128:127>:f3
   func.return
 }
 
+
+// -----
+
+func.func @broadcast_in_dim_c1(
+  %arg0: tensor<1x2x1x!quant.uniform<i8<-128:127>:f32, 0.2:-30>>) {
+  // expected-error@+1 {{operand scale 2.000000e-01 and result scale1.000000e-01 are not same}}
+  %broadcast_in_dim = "stablehlo.broadcast_in_dim" (%arg0) {broadcast_dimensions = array<i64: 0, 1, 2>
+  } : (tensor<1x2x1x!quant.uniform<i8<-128:127>:f32, 0.2:-30>>) -> tensor<1x2x3x2x!quant.uniform<i8<-128:127>:f32, 0.1:-30>>
+  func.return
+}
+
+// -----
+
+func.func @broadcast_in_dim_c1(
+  %arg0: tensor<1x2x1x!quant.uniform<i8<-128:127>:f32, 0.2:-30>>) {
+  // expected-error@+1 {{operand zero_point -30 and result zero_point -20 are not same}}
+  %broadcast_in_dim = "stablehlo.broadcast_in_dim" (%arg0) {broadcast_dimensions = array<i64: 0, 1, 2>
+  } : (tensor<1x2x1x!quant.uniform<i8<-128:127>:f32, 0.2:-30>>) -> tensor<1x2x3x2x!quant.uniform<i8<-128:127>:f32, 0.2:-20>>
+  func.return
+}
+
+
 // -----
 
 func.func @broadcast_in_dim_c6(
@@ -1033,9 +1055,44 @@ func.func @broadcast_in_dim_c6(
 
 // -----
 
+func.func @transpose_c1(%arg0: tensor<1x2x2x!quant.uniform<i8<-128:127>:f32, 0.2:-30>>) {
+  // expected-error@+1 {{operand scale 2.000000e-01 and result scale1.000000e-01 are not same}}  
+  %transpose = "stablehlo.transpose"(%arg0) {permutation = array<i64: 0, 2, 1>
+  } : (tensor<1x2x2x!quant.uniform<i8<-128:127>:f32, 0.2:-30>>) -> tensor<1x2x2x!quant.uniform<i8<-128:127>:f32, 0.1:-30>>
+  func.return
+}
+
+// -----
+
+func.func @transpose_c1(%arg0: tensor<1x2x2x!quant.uniform<i8<-128:127>:f32, 0.1:-30>>) {
+  // expected-error@+1 {{operand zero_point -30 and result zero_point -20 are not same}}  
+  %transpose = "stablehlo.transpose"(%arg0) {permutation = array<i64: 0, 2, 1>
+  } : (tensor<1x2x2x!quant.uniform<i8<-128:127>:f32, 0.1:-30>>) -> tensor<1x2x2x!quant.uniform<i8<-128:127>:f32, 0.1:-20>>
+  func.return
+}
+
+// -----
+
 func.func @transpose_c4(%arg0: tensor<1x2x2x!quant.uniform<i8<-128:127>:f32:0, {0.1:-30, 0.5:-20}>>) {
   // expected-error@+1 {{operand quantization_dimension 0 is not same as permutation[1] 2}}  
   %transpose = "stablehlo.transpose"(%arg0) {permutation = array<i64: 0, 2, 1>
   } : (tensor<1x2x2x!quant.uniform<i8<-128:127>:f32:0, {0.1:-30, 0.5:-20}>>) -> tensor<1x2x2x!quant.uniform<i8<-128:127>:f32:1, {0.1:-30, 0.5:-20}>>
+  func.return
+}
+
+
+// -----
+
+func.func @reshape_c1(%arg0: tensor<1x2x2x!quant.uniform<i8:f32, 1.0:17>>){
+  // expected-error@+1 {{operand scale 1.000000e+00 and result scale1.000000e-01 are not same}}
+  %reshape = "stablehlo.reshape" (%arg0) : (tensor<1x2x2x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<1x2x2x!quant.uniform<i8:f32, 0.1:17>>
+  func.return
+}
+
+// -----
+
+func.func @reshape_c1(%arg0: tensor<1x2x2x!quant.uniform<i8:f32, 1.0:17>>){
+  // expected-error@+1 {{operand zero_point 17 and result zero_point 18 are not same}}
+  %reshape = "stablehlo.reshape" (%arg0) : (tensor<1x2x2x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<1x2x2x!quant.uniform<i8:f32, 1.0:18>>
   func.return
 }

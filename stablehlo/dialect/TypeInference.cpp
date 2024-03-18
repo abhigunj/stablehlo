@@ -83,21 +83,25 @@ bool noneQuantized(ArrayRef<Type> typeRange) {
   });
 }
 
-bool perTensorQuantScaleZeroCheck(Value operand, Value result){
-  Type operandTy = operand.getType();
-  Type resultTy = result.getType();
-  llvm::SmallVector<Type, 2> typeEntriesPerTensor{operandTy, resultTy};
-  if(allQuantized<quant::UniformQuantizedType>(typeEntriesPerTensor)){
-    auto operandQTy = operandTy.cast<quant::UniformQuantizedType>();
-    auto resultQTy = resultTy.cast<quant::UniformQuantizedType>();
-    if (operandQTy.getScale() != resultQTy.getScale() ||
-      operandQTy.getZeroPoint() != resultQTy.getZeroPoint()){
-        return false;
-      }
+LogicalResult samePerTensorScaleZP(std::optional<Location> location,
+                                   Type operandTy, Type resultTy) {
+  llvm::SmallVector<Type, 2> entries{operandTy, resultTy};
+  if (allQuantized<quant::UniformQuantizedType>(entries)) {
+    auto operandQTy =
+        getElementTypeOrSelf(operandTy).cast<quant::UniformQuantizedType>();
+    auto resultQTy =
+        getElementTypeOrSelf(resultTy).cast<quant::UniformQuantizedType>();
+    if (operandQTy.getScale() != resultQTy.getScale())
+      return emitOptionalError(location, "operand scale ",
+                               operandQTy.getScale(), " and result scale",
+                               resultQTy.getScale(), " are not same");
+    if (operandQTy.getZeroPoint() != resultQTy.getZeroPoint())
+      return emitOptionalError(
+          location, "operand zero_point ", operandQTy.getZeroPoint(),
+          " and result zero_point ", resultQTy.getZeroPoint(), " are not same");
   }
-  return true;
+  return success();
 }
-
 
 }  // namespace
 
@@ -302,12 +306,15 @@ LogicalResult verifyPairwiseCompatibleShapes(TypeRange values) {
 LogicalResult verifyTransposeOp(std::optional<Location> location,
                                 Type operandType, ArrayRef<int64_t> permutation,
                                 Type resultType) {
+  // transpose_c1
+  // part of transpose_c1 already verified by
+  // Trait HLO_CompatibleOperandsAndResultElementType
+  if (failed(samePerTensorScaleZP(location, operandType, resultType)))
+    return failure();
   // transpose_c4
   if (auto resultQType = getElementTypeOrSelf(resultType)
                              .dyn_cast<quant::UniformQuantizedPerAxisType>()) {
     auto resultQDim = resultQType.getQuantizedDimension();
-    // Result and operand are of per-axis quantized is already validated at
-    // HLO_CompatibleOperandsAndResultElementType
     auto operandQDim = getElementTypeOrSelf(operandType)
                            .dyn_cast<quant::UniformQuantizedPerAxisType>()
                            .getQuantizedDimension();
@@ -3228,6 +3235,13 @@ LogicalResult verifyBroadcastInDimOp(std::optional<Location> location,
     return success();
   }
 
+  // broadcast_in_dim_c1
+  // part of broadcast_in_dim_c1 already verified by
+  // Trait HLO_CompatibleOperandsAndResultElementType
+  if (failed(
+          samePerTensorScaleZP(location, operand.getType(), result.getType())))
+    return failure();
+
   // broadcast_in_dim_c2
   auto dimensionsSize = broadcastDimensions.size();
   auto operandRank = operandType.getRank();
@@ -3262,7 +3276,6 @@ LogicalResult verifyBroadcastInDimOp(std::optional<Location> location,
             resultDimSize, ")");
     }
   }
-
 
   // broadcast_in_dim_c6
   if (auto resultQType = getElementTypeOrSelf(result.getType())
@@ -4040,6 +4053,13 @@ LogicalResult verifyReshapeOp(std::optional<Location> location, Value operand,
                              numResultElements,
                              ") doesn't match expected number of elements (",
                              numOperandElements, ")");
+
+  // reshape_c1
+  // part of reshape_c1 already verified by
+  // Trait HLO_CompatibleOperandsAndResultElementType
+  if (failed(
+          samePerTensorScaleZP(location, operand.getType(), result.getType())))
+    return failure();
 
   return success();
 }
