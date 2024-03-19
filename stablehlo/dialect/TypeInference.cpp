@@ -317,7 +317,7 @@ LogicalResult verifyTransposeOp(std::optional<Location> location,
                              .dyn_cast<quant::UniformQuantizedPerAxisType>()) {
     auto resultQDim = resultQType.getQuantizedDimension();
     auto operandQDim = getElementTypeOrSelf(operandType)
-                           .dyn_cast<quant::UniformQuantizedPerAxisType>()
+                           .cast<quant::UniformQuantizedPerAxisType>()
                            .getQuantizedDimension();
     if (operandQDim != permutation[resultQDim])
       return emitOptionalError(location, "operand quantization_dimension ",
@@ -3282,7 +3282,7 @@ LogicalResult verifyBroadcastInDimOp(std::optional<Location> location,
   if (auto resultQType = getElementTypeOrSelf(result.getType())
                              .dyn_cast<quant::UniformQuantizedPerAxisType>()) {
     auto operandQType = getElementTypeOrSelf(operand.getType())
-                            .dyn_cast<quant::UniformQuantizedPerAxisType>();
+                            .cast<quant::UniformQuantizedPerAxisType>();
     auto operandQDim = operandQType.getQuantizedDimension();
     auto resultQDim = resultQType.getQuantizedDimension();
     if (resultQDim != broadcastDimensions[operandQDim])
@@ -3549,13 +3549,14 @@ LogicalResult verifyDotGeneralOp(std::optional<Location> location, Value lhs,
   if (rhsQPAType) {
     for (auto rhsZP : rhsQPAType.getZeroPoints()) {
       if (rhsZP != expectedZP)
-        return emitOptionalError(location, "rhs zero_point ", rhsZP,
-                                 " is not 0");
+        return emitOptionalError(location, "rhs zero_point ", rhsZP, " is not ",
+                                 expectedZP);
     }
   } else {
     auto rhsZP = rhsQType.cast<quant::UniformQuantizedType>().getZeroPoint();
     if (rhsZP != expectedZP)
-      return emitOptionalError(location, "rhs zero_point ", rhsZP, " is not 0");
+      return emitOptionalError(location, "rhs zero_point ", rhsZP, " is not ",
+                               expectedZP);
   }
 
   auto resultQPAType =
