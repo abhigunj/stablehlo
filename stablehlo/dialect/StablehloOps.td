@@ -194,7 +194,7 @@ class StableHLO_UnaryElementwiseOp<string mnemonic, list<Trait> traits,
 
 // Abs supports complex to real, so element type is not guaranteed to match.
 def StableHLO_AbsOp: StableHLO_UnaryElementwiseOp<"abs",
-    [Pure, DeclareOpInterfaceMethods<InferTypeOpInterface>],
+    [Pure, DeclareOpInterfaceMethods<InferTypeOpInterface>, HLO_MatchingOperandsAndResultScaleZeroPoint],
      RankedTensorOf<[HLO_SInt, HLO_Float, HLO_Complex, HLO_QuantizedInt] /* abs_i1 */>,
      RankedTensorOf<[HLO_SInt, HLO_Float, HLO_QuantizedInt]>> {
   let summary = "Abs operation";
@@ -1282,7 +1282,8 @@ def StableHLO_WhileOp: StableHLO_Op<"while", [
 }
 
 def StableHLO_AllGatherOp : StableHLO_Op<"all_gather",
-    [SameOperandsAndResultElementType] /*all_gather_c6*/> {
+    [SameOperandsAndResultElementType,
+     HLO_MatchingOperandsAndResultScaleZeroPoint] /*all_gather_c6*/> {
   string summary = "AllGather operation";
   string description = [{
     Within each process group in the process grid, concatenates the values of the
@@ -2013,7 +2014,8 @@ def StableHLO_ConcatenateOp : StableHLO_ShapedInterfaceOp<"concatenate",
 
 
 def StableHLO_CollectiveBroadcastOp: StableHLO_Op<"collective_broadcast",
-    [HLO_CompatibleOperandsAndResultType /*collective_broadcast_c3*/]> {
+    [HLO_CompatibleOperandsAndResultType /*collective_broadcast_c3*/,
+     HLO_MatchingOperandsAndResultScaleZeroPoint]> {
   let summary = "CollectiveBroadcast operation";
   let description = [{
     Within each process group in the process grid, send the value of the
@@ -2048,7 +2050,8 @@ def StableHLO_CollectiveBroadcastOp: StableHLO_Op<"collective_broadcast",
 }
 
 def StableHLO_CollectivePermuteOp: StableHLO_Op<"collective_permute",
-    [HLO_CompatibleOperandsAndResultType /*collective_permute_c5*/]> {
+    [HLO_CompatibleOperandsAndResultType /*collective_permute_c5*/,
+     HLO_MatchingOperandsAndResultScaleZeroPoint]> {
   let summary = "CollectivePermute operation";
   let description = [{
     Within each process group in the process grid, sends the value of the
@@ -2493,7 +2496,7 @@ def StableHLO_MapOp: StableHLO_ShapedInterfaceOp<"map",
 }
 
 def StableHLO_ReshapeOp: StableHLO_Op<"reshape",
-      [Pure, HLO_CompatibleOperandsAndResultElementType]> {
+      [Pure, HLO_CompatibleOperandsAndResultElementType /*reshape_c1*/]> {
   let summary = "Reshape operation";
   let description = [{
     Performs reshape of `operand` tensor to a `result` tensor.
@@ -2730,8 +2733,9 @@ def StableHLO_SortOp : StableHLO_Op<"sort",
   let hasVerifier = 1;
 }
 
-def StableHLO_ReverseOp: StableHLO_ShapedInterfaceOp<"reverse",
-      [Pure, HLO_CompatibleOperandsAndResultType /*reverse_c1*/]> {
+def StableHLO_ReverseOp: StableHLO_Op<"reverse",
+      [Pure, HLO_CompatibleOperandsAndResultType,
+       HLO_MatchingOperandsAndResultScaleZeroPoint /*reverse_c1*/]> {
   let summary = "Reverse operation";
   let description = [{
     Reverses the order of elements in the `operand` along the specified

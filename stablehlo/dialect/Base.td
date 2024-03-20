@@ -297,6 +297,9 @@ def HLO_CompatibleOperandsAndResultType : TraitList<
 def HLO_CompatibleOperandsAndResultElementType :
   HLO_NativeOpTrait<"CompatibleOperandsAndResultElementType">;
 
+def HLO_MatchingOperandsAndResultScaleZeroPoint :
+  HLO_NativeOpTrait<"MatchingOperandsAndResultScaleZeroPoint">;
+
 def HLO_CompatibleOperandsElementType :
   HLO_NativeOpTrait<"CompatibleOperandsElementType">;
 

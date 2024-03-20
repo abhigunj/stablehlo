@@ -85,6 +85,14 @@ bool isCompatibleForHloTypeInference(TypeRange tp1, TypeRange tp2);
 // undefined behavior.
 bool isCompatibleForHloTypeInference(Value shape1, Type tp2);
 
+// Returns true if given per-tensor quantized tensors have matching
+// scale and zero_point
+bool isMatchingScaleAndZeroPoint(Type tp1, Type tp2);
+
+// Returns true if all types from a input array are of
+// quant::UniformQuantizedType
+bool allUniformQuantizedType(TypeRange typeRange);
+
 // TODO(zhouxin) Move type inference related methods to TypeInference.cpp
 
 std::pair<int64_t, int64_t> inferConcatenatedDimAndBound(int64_t leftSize,
@@ -256,6 +264,37 @@ class BroadcastingElementwise
 template <typename ConcreteType>
 class IsCommutative
     : public mlir::OpTrait::TraitBase<ConcreteType, IsCommutative> {};
+
+template <typename ConcreteType>
+class MatchingOperandsAndResultScaleZeroPoint
+    : public mlir::OpTrait::TraitBase<ConcreteType,
+                                      MatchingOperandsAndResultScaleZeroPoint> {
+ public:
+  static LogicalResult verifyTrait(Operation *op) {
+    if (failed(mlir::OpTrait::impl::verifyAtLeastNOperands(op, 1)))
+      return failure();
+    if (failed(mlir::OpTrait::impl::verifyAtLeastNResults(op, 1)))
+      return failure();
+
+    if (!allUniformQuantizedType(op->getOperandTypes()) ||
+        !allUniformQuantizedType(op->getOperandTypes())) {
+      return success();
+    }
+
+    Type expected = op->getResult(0).getType();
+    auto expectedMatch = [&](Type actual) {
+      return isMatchingScaleAndZeroPoint(actual, expected);
+    };
+
+    auto allMatch = llvm::all_of(op->getOperandTypes(), expectedMatch) &&
+                    llvm::all_of(op->getResultTypes(), expectedMatch);
+    if (!allMatch)
+      return op->emitOpError(
+          "requires matching scale and zero_point for all operands and result");
+
+    return success();
+  }
+};
 
 template <typename ConcreteType>
 class PairwiseSameOperandAndResultType

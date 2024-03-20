@@ -893,3 +893,21 @@ func.func @convolution_c33(%arg0: tensor<1x8x8x207x!quant.uniform<i8:f32, 2.0:15
     (tensor<1x8x8x207x!quant.uniform<i8:f32, 2.0:15>>, tensor<3x3x207x16x!quant.uniform<i8:f32:3, {0.1:-30}>>) -> tensor<1x8x8x16x!quant.uniform<i8:f32:0, {2.0:-30}>>
  func.return %0 : tensor<1x8x8x16x!quant.uniform<i8:f32:0, {2.0:-30}>>
 }
+
+// -----
+
+func.func @match_scale_trait_negative_test(%arg0: tensor<1x2x2x!quant.uniform<i8:f32, 0.1:-30>>){
+  // expected-error@+1 {{requires matching scale and zero_point for all operands and result}}
+  %abs_neg = "stablehlo.abs"(%arg0) : (tensor<1x2x2x!quant.uniform<i8<-128:127>:f32, 0.1:-30>>) -> tensor<1x2x2x!quant.uniform<i8<-128:127>:f32, 0.2:-30>>
+  func.return
+}
+
+// -----
+
+func.func @match_zero_point_trait_negative_test(%arg0: tensor<1x2x2x!quant.uniform<i8:f32, 1.0:17>>){
+  // expected-error@+1 {{op requires matching scale and zero_point for all operands and result}}
+  %collective_permute = "stablehlo.collective_permute"(%arg0) {
+    source_target_pairs = dense<[[0, 1], [1, 2], [2, 3]]> : tensor<3x2xi64>, channel_handle = #stablehlo.channel_handle<handle = 0, type = 0>
+    }: (tensor<1x2x2x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<1x2x2x!quant.uniform<i8:f32, 1.0:18>>
+  func.return
+}

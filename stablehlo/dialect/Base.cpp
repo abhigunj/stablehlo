@@ -33,6 +33,24 @@ limitations under the License.
 namespace mlir {
 namespace hlo {
 
+bool allUniformQuantizedType(TypeRange typeRange) {
+  return llvm::all_of(typeRange, [&](Type val) {
+    return val.cast<ShapedType>()
+        .getElementType()
+        .isa<quant::UniformQuantizedType>();
+  });
+}
+
+bool isMatchingScaleAndZeroPoint(Type tp1, Type tp2) {
+  auto qtp1 = getElementTypeOrSelf(tp1).cast<quant::UniformQuantizedType>();
+  auto qtp2 = getElementTypeOrSelf(tp2).cast<quant::UniformQuantizedType>();
+  if ((qtp1.getScale() != qtp2.getScale()) ||
+      (qtp1.getZeroPoint() != qtp2.getZeroPoint()))
+    return false;
+
+  return true;
+}
+
 LogicalResult verifyCompatibleShapeWithBounds(Type type1, Type type2) {
   if (failed(verifyCompatibleShape(type1, type2))) return failure();
 
