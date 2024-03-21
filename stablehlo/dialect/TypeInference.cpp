@@ -3237,8 +3237,6 @@ LogicalResult verifyBroadcastInDimOp(std::optional<Location> location,
   }
 
   // broadcast_in_dim_c1
-  // part of broadcast_in_dim_c1 already verified by
-  // Trait HLO_CompatibleOperandsAndResultElementType
   if (failed(sameQuantScaleZeroPoint(location, operand.getType(),
                                      result.getType())))
     return failure();
@@ -3291,7 +3289,7 @@ LogicalResult verifyBroadcastInDimOp(std::optional<Location> location,
                                operandQDim, " (",
                                broadcastDimensions[operandQDim], ")");
     if (operandType.getDimSize(operandQDim) == 1) {
-      for (auto j = 0; j != resultType.getDimSize(resultQDim); ++j) {
+      for (int64_t j = 0; j != resultType.getDimSize(resultQDim); ++j) {
         if (resultQType.getScales()[j] != operandQType.getScales()[0])
           return emitOptionalError(location, "mismatch result scale ", j, " (",
                                    resultQType.getScales()[j],
@@ -3508,75 +3506,13 @@ LogicalResult verifyDotGeneralOp(std::optional<Location> location, Value lhs,
     return failure();
 
   auto inferredShape = inferredReturnShapes[0];
-  auto resultShapeType = result.getType().cast<ShapedType>();
-  if (inferredShape.hasRank() && resultShapeType.hasRank() &&
+  auto resultType = result.getType().cast<ShapedType>();
+  if (inferredShape.hasRank() && resultType.hasRank() &&
       failed(verifyCompatibleShape(inferredShape.getDims(),
-                                   resultShapeType.getShape())))
-    return emitOptionalError(location, "inferred shape '",
-                             dimSizesToString(inferredShape.getDims()), "' ",
-                             "is incompatible with return type of operation ",
-                             resultShapeType, "");
-
-  Type lhsType = lhs.getType();
-  Type rhsType = rhs.getType();
-  Type resultType = result.getType();
-  llvm::SmallVector<Type, 3> typeEntries{lhsType, rhsType, resultType};
-  if (noneQuantized<quant::QuantizedType>(typeEntries)) return success();
-  // dot_general_c14
-  if (!allQuantized<quant::QuantizedType>(typeEntries)) {
-    return emitOptionalError(location,
-                             "not all of operands and result are quantized");
-  }
-  auto lhsQType = getElementTypeOrSelf(lhsType).cast<quant::QuantizedType>();
-  auto rhsQType = getElementTypeOrSelf(rhsType).cast<quant::QuantizedType>();
-  auto resultQType =
-      getElementTypeOrSelf(resultType).cast<quant::QuantizedType>();
-  // dot_general_c15
-  if (lhsQType.getStorageType() != rhsQType.getStorageType())
-    return emitOptionalError(location, "mismatched operand storage types, lhs ",
-                             lhsQType.getStorageType(), " and rhs ",
-                             rhsQType.getStorageType());
-  // dot_general_c16
-  auto expressedType = lhsQType.getExpressedType();
-  if (expressedType != rhsQType.getExpressedType() ||
-      expressedType != resultQType.getExpressedType())
-    return emitOptionalError(location,
-                             "mismatched operands and result expressed types");
-
-  auto rhsQPAType = rhsQType.dyn_cast<quant::UniformQuantizedPerAxisType>();
-  // dot_general_c17
-  auto expectedZP = 0;
-  if (rhsQPAType) {
-    for (auto rhsZP : rhsQPAType.getZeroPoints()) {
-      if (rhsZP != expectedZP)
-        return emitOptionalError(location, "rhs zero_point ", rhsZP, " is not ",
-                                 expectedZP);
-    }
-  } else {
-    auto rhsZP = rhsQType.cast<quant::UniformQuantizedType>().getZeroPoint();
-    if (rhsZP != expectedZP)
-      return emitOptionalError(location, "rhs zero_point ", rhsZP, " is not ",
-                               expectedZP);
-  }
-
-  auto resultQPAType =
-      resultQType.dyn_cast<quant::UniformQuantizedPerAxisType>();
-  // dot_general_c18
-  if (!rhsQPAType && resultQPAType)
-    return emitOptionalError(location,
-                             "rhs and result are of mixed per_tensor and "
-                             "per_axis quantized tensor type ",
-                             rhsType, " and ", resultType);
-  // dot_general_c19
-  if (rhsQPAType) {
-    auto* it = llvm::find(rhsContractingDimensions,
-                          rhsQPAType.getQuantizedDimension());
-    if (it != rhsContractingDimensions.end())
-      return emitOptionalError(
-          location,
-          "rhs_contracting_dimensions contain rhs quantized dimension ",
-          rhsQPAType.getQuantizedDimension());
-  }
+                                   resultType.getShape())))
+    return emitOptionalError(
+        location, "inferred shape '", dimSizesToString(inferredShape.getDims()),
+        "' ", "is incompatible with return type of operation ", resultType, "");
   return success();
 }
 
