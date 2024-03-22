@@ -210,7 +210,7 @@ def StableHLO_AbsOp: StableHLO_UnaryElementwiseOp<"abs",
     %result = stablehlo.abs %operand : tensor<3xi32>
     ```
   }];
-  
+
   let hasVerifier = 1;
 }
 
