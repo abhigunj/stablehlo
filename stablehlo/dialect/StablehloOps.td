@@ -210,6 +210,8 @@ def StableHLO_AbsOp: StableHLO_UnaryElementwiseOp<"abs",
     %result = stablehlo.abs %operand : tensor<3xi32>
     ```
   }];
+  
+  let hasVerifier = 1;
 }
 
 def StableHLO_CbrtOp: StableHLO_UnaryElementwiseOp<"cbrt",
@@ -2614,6 +2616,8 @@ def StableHLO_SelectOp: StableHLO_Op<"select", [Pure, HLO_BroadcastingElementwis
     operands attr-dict `:`
       custom<SelectOpType>(type($pred), type($on_true), type($on_false), type($result))
   }];
+
+   let hasVerifier = 1;
 }
 
 def StableHLO_SelectAndScatterOp: StableHLO_Op<"select_and_scatter",
@@ -3145,6 +3149,7 @@ def StableHLO_UniformQuantizeOp : StableHLO_UnaryElementwiseOp<"uniform_quantize
     %result = stablehlo.uniform_quantize %operand : (tensor<2xf32>) -> tensor<2x!quant.uniform<i8:f32:0, {0.1:-30,0.5:-20}>>
     ```
   }];
+
 }
 
 def StableHLO_UniformDequantizeOp : StableHLO_UnaryElementwiseOp<"uniform_dequantize",
@@ -3164,6 +3169,7 @@ def StableHLO_UniformDequantizeOp : StableHLO_UnaryElementwiseOp<"uniform_dequan
     %result = stablehlo.uniform_dequantize %operand : (tensor<2x!quant.uniform<i8:f32:0, {0.1:-30,0.5:-20}>>) -> tensor<2xf32>
     ```
   }];
+
 }
 
 def StableHLO_ReducePrecisionOp : StableHLO_Op<"reduce_precision",

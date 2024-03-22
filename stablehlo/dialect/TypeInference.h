@@ -374,6 +374,9 @@ LogicalResult inferWhileOp(std::optional<Location> location, ValueRange operand,
 // Verifiers for ops.
 //===----------------------------------------------------------------------===//
 
+LogicalResult verifyAbsOp(std::optional<Location> location, Value operand,
+                          Value result);
+
 LogicalResult verifyAllGatherOp(std::optional<Location> location, Value operand,
                                 int64_t allGatherDim,
                                 DenseIntElementsAttr replicaGroups,
@@ -510,7 +513,8 @@ LogicalResult verifyScatterOp(std::optional<Location> location,
                               ArrayRef<int64_t> scatterDimsToOperandDims,
                               int64_t indexVectorDim,
                               Region& updateComputation);
-
+LogicalResult verifySelectOp(std::optional<Location> location, Value onTrue,
+                             Value onFalse, Value result);
 LogicalResult verifySelectAndScatterOp(
     std::optional<Location> location, Value operand, Value source,
     Value initValue, std::optional<ArrayRef<int64_t>> windowDimensions,
@@ -519,7 +523,8 @@ LogicalResult verifySelectAndScatterOp(
     Region& scatter);
 
 LogicalResult verifySortOp(std::optional<Location> location, ValueRange inputs,
-                           int64_t dimension, Region& comparator);
+                           int64_t dimension, Region& comparator,
+                           ValueRange results);
 
 LogicalResult verifyTransposeOp(std::optional<Location> location,
                                 Type operandType,
@@ -527,7 +532,8 @@ LogicalResult verifyTransposeOp(std::optional<Location> location,
                                 Type resultType);
 
 LogicalResult verifyWhileOp(std::optional<Location> location,
-                            ValueRange operand, Region& cond, Region& body);
+                            ValueRange operand, Region& cond, Region& body,
+                            ValueRange results);
 }  // end namespace hlo
 }  // end namespace mlir
 

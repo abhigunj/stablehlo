@@ -909,7 +909,7 @@ func.func @bitcast_convert_c1(%arg0: tensor<1x2x2x!quant.uniform<i8<-128:127>:f3
 
 func.func @broadcast_in_dim_c1(
   %arg0: tensor<1x2x1x!quant.uniform<i8<-128:127>:f32, 0.2:-30>>) {
-  // expected-error@+1 {{operand scale 2.000000e-01 and result scale1.000000e-01 are not same}}
+  // expected-error@+1 {{expect same quantization scale for operand and result but got}}
   %broadcast_in_dim = "stablehlo.broadcast_in_dim" (%arg0) {broadcast_dimensions = array<i64: 0, 1, 2>
   } : (tensor<1x2x1x!quant.uniform<i8<-128:127>:f32, 0.2:-30>>) -> tensor<1x2x3x2x!quant.uniform<i8<-128:127>:f32, 0.1:-30>>
   func.return
@@ -919,7 +919,7 @@ func.func @broadcast_in_dim_c1(
 
 func.func @broadcast_in_dim_c1(
   %arg0: tensor<1x2x1x!quant.uniform<i8<-128:127>:f32, 0.2:-30>>) {
-  // expected-error@+1 {{operand zero_point -30 and result zero_point -20 are not same}}
+  // expected-error@+1 {{expect same quantization zero_point for operand and result but got }}
   %broadcast_in_dim = "stablehlo.broadcast_in_dim" (%arg0) {broadcast_dimensions = array<i64: 0, 1, 2>
   } : (tensor<1x2x1x!quant.uniform<i8<-128:127>:f32, 0.2:-30>>) -> tensor<1x2x3x2x!quant.uniform<i8<-128:127>:f32, 0.2:-20>>
   func.return
@@ -949,7 +949,7 @@ func.func @broadcast_in_dim_c6(
 
 func.func @broadcast_in_dim_c6(
   %arg0: tensor<1x2x1x!quant.uniform<i8<-128:127>:f32:2, {0.1:-30, 0.5:-20}>>) {
-  // expected-error@+1 {{mismatch result zeroPoint 1 (-20) and operand zeroPoint 0 (-30)}}
+  // expected-error@+1 {{mismatch result zero_point 1 (-20) and operand zero_point 0 (-30)}}
   %broadcast_in_dim = "stablehlo.broadcast_in_dim" (%arg0) {broadcast_dimensions = array<i64: 0, 1, 3>
   } : (tensor<1x2x1x!quant.uniform<i8<-128:127>:f32:2, {0.1:-30, 0.5:-20}>>) -> tensor<1x2x3x2x!quant.uniform<i8<-128:127>:f32:3, {0.1:-30, 0.1:-20}>>
   func.return
@@ -958,7 +958,7 @@ func.func @broadcast_in_dim_c6(
 // -----
 
 func.func @transpose_c1(%arg0: tensor<1x2x2x!quant.uniform<i8<-128:127>:f32, 0.2:-30>>) {
-  // expected-error@+1 {{operand scale 2.000000e-01 and result scale1.000000e-01 are not same}}
+  // expected-error@+1 {{expect same quantization scale for operand and result but got}}
   %transpose = "stablehlo.transpose"(%arg0) {permutation = array<i64: 0, 2, 1>
   } : (tensor<1x2x2x!quant.uniform<i8<-128:127>:f32, 0.2:-30>>) -> tensor<1x2x2x!quant.uniform<i8<-128:127>:f32, 0.1:-30>>
   func.return
@@ -967,7 +967,7 @@ func.func @transpose_c1(%arg0: tensor<1x2x2x!quant.uniform<i8<-128:127>:f32, 0.2
 // -----
 
 func.func @transpose_c1(%arg0: tensor<1x2x2x!quant.uniform<i8<-128:127>:f32, 0.1:-30>>) {
-  // expected-error@+1 {{operand zero_point -30 and result zero_point -20 are not same}}
+  // expected-error@+1 {{expect same quantization zero_point for operand and result but got }}
   %transpose = "stablehlo.transpose"(%arg0) {permutation = array<i64: 0, 2, 1>
   } : (tensor<1x2x2x!quant.uniform<i8<-128:127>:f32, 0.1:-30>>) -> tensor<1x2x2x!quant.uniform<i8<-128:127>:f32, 0.1:-20>>
   func.return
@@ -985,7 +985,7 @@ func.func @transpose_c4(%arg0: tensor<1x2x2x!quant.uniform<i8<-128:127>:f32:0, {
 // -----
 
 func.func @reshape_c1(%arg0: tensor<1x2x2x!quant.uniform<i8:f32, 1.0:17>>){
-  // expected-error@+1 {{operand scale 1.000000e+00 and result scale1.000000e-01 are not same}}
+  // expected-error@+1 {{expect same quantization scale for operand and result but got}}
   %reshape = "stablehlo.reshape" (%arg0) : (tensor<1x2x2x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<1x2x2x!quant.uniform<i8:f32, 0.1:17>>
   func.return
 }
@@ -993,7 +993,50 @@ func.func @reshape_c1(%arg0: tensor<1x2x2x!quant.uniform<i8:f32, 1.0:17>>){
 // -----
 
 func.func @reshape_c1(%arg0: tensor<1x2x2x!quant.uniform<i8:f32, 1.0:17>>){
-  // expected-error@+1 {{operand zero_point 17 and result zero_point 18 are not same}}
+  // expected-error@+1 {{expect same quantization zero_point for operand and result but got }}
   %reshape = "stablehlo.reshape" (%arg0) : (tensor<1x2x2x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<1x2x2x!quant.uniform<i8:f32, 1.0:18>>
+  func.return
+}
+
+// -----
+
+func.func @while_c3(%arg0: tensor<4x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<?x!quant.uniform<i8:f64, 1.0:17>> {
+  // expected-error@+1 {{expect operands to be compatible with result  but got 'tensor<4x!quant.uniform<i8:f32, 1.000000e+00:17>>' vs 'tensor<?x!quant.uniform<i8:f64, 1.000000e+00:17>>}}
+  %while = "stablehlo.while"(%arg0) ({
+  ^bb0(%arg1: tensor<?x!quant.uniform<i8:f32, 1.0:17>>):
+    %1 = stablehlo.constant dense<true> : tensor<i1>
+    stablehlo.return %1 : tensor<i1>
+  },  {
+  ^bb0(%arg1: tensor<?x!quant.uniform<i8:f32, 1.0:17>>):
+    stablehlo.return %arg1 : tensor<?x!quant.uniform<i8:f32, 1.0:17>>
+  }) : (tensor<4x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<?x!quant.uniform<i8:f64, 1.0:17>>
+  func.return %while : tensor<?x!quant.uniform<i8:f64, 1.0:17>>
+}
+
+// -----
+
+func.func @while_c3(%arg0: tensor<4x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<?x!quant.uniform<i8:f64, 1.0:18>> {
+  // expected-error@+1 {{expect same quantization zero_point for operand and result but got }}
+  %while = "stablehlo.while"(%arg0) ({
+  ^bb0(%arg1: tensor<?x!quant.uniform<i8:f32, 1.0:17>>):
+    %1 = stablehlo.constant dense<true> : tensor<i1>
+    stablehlo.return %1 : tensor<i1>
+  },  {
+  ^bb0(%arg1: tensor<?x!quant.uniform<i8:f32, 1.0:17>>):
+    stablehlo.return %arg1 : tensor<?x!quant.uniform<i8:f32, 1.0:17>>
+  }) : (tensor<4x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<?x!quant.uniform<i8:f32, 1.0:18>>
+  func.return %while : tensor<?x!quant.uniform<i8:f32, 1.0:18>>
+}
+
+// -----
+
+func.func @sort_c2(%input0: tensor<16x16x!quant.uniform<i8:f32, 1.0:17>>, %input1: tensor<16x16x!quant.uniform<i8:f64, 1.0:17>>) {
+  // expected-error@+1 {{expect operands to be compatible with result}}
+  %0:2 = "stablehlo.sort"(%input0, %input1) ({
+  ^bb0(%arg0: tensor<!quant.uniform<i8:f32, 1.0:17>>, %arg1: tensor<!quant.uniform<i8:f32, 1.0:17>>, %arg2: tensor<!quant.uniform<i8:f64, 1.0:17>>, %arg3: tensor<!quant.uniform<i8:f64, 1.0:17>>):
+    %7 = "stablehlo.compare"(%arg0, %arg1) {comparison_direction = #stablehlo<comparison_direction GT>} : (tensor<!quant.uniform<i8:f32, 1.0:17>>, tensor<!quant.uniform<i8:f32, 1.0:17>>) -> tensor<i1>
+    "stablehlo.return"(%7) : (tensor<i1>) -> ()
+  }) {dimension = 1 : i64, is_stable = true} : (tensor<16x16x!quant.uniform<i8:f32, 1.0:17>>, tensor<16x16x!quant.uniform<i8:f64, 1.0:17>>)
+  -> (tensor<16x16x!quant.uniform<i8:f32, 1.0:17>>, tensor<16x16x!quant.uniform<i8:f32, 1.0:17>>)
   func.return
 }

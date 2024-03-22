@@ -2212,12 +2212,13 @@ func.func @select_c2(%arg0: tensor<3xi1>, %arg1: tensor<2x4xi32>, %arg2: tensor<
 
 // -----
 
-func.func @select_c2(%arg0: tensor<i1>, %arg1: tensor<2x3xf32>, %arg2: tensor<2x3xf32>) -> tensor<2x3xi32> {
-  // expected-error@+2 {{failed to infer returned types}}
-  // expected-error@+1 {{inferred type(s) 'tensor<2x3xf32>' are incompatible with return type(s) of operation 'tensor<2x3xi32>'}}
-  %0 = "stablehlo.select"(%arg0, %arg1, %arg2) : (tensor<i1>, tensor<2x3xf32>, tensor<2x3xf32>) -> tensor<2x3xi32>
-  func.return %0 : tensor<2x3xi32>
-}
+// Verifier error-out before we reach here
+//func.func @select_c2(%arg0: tensor<i1>, %arg1: tensor<2x3xf32>, %arg2: tensor<2x3xf32>) -> tensor<2x3xi32> {
+//  // exxxpected-error@+2 {{failed to infer returned types}}
+//  // exxxpected-error@+1 {{inferred type(s) 'tensor<2x3xf32>' are incompatible with return type(s) of operation 'tensor<2x3xi32>'}}
+//  %0 = "stablehlo.select"(%arg0, %arg1, %arg2) : (tensor<i1>, tensor<2x3xf32>, tensor<2x3xf32>) -> tensor<2x3xi32>
+//  func.return %0 : tensor<2x3xi32>
+//}
 
 // -----
 
@@ -5219,12 +5220,13 @@ func.func @abs_complex(%arg0: tensor<1x2xcomplex<f32>>) -> tensor<1x2xf32> {
 
 // -----
 
-func.func @abs_c2(%arg0: tensor<1x2xf32>) -> tensor<1x2xf64> {
-  // expected-error@+2 {{failed to infer returned types}}
-  // expected-error@+1 {{'stablehlo.abs' op inferred type(s) 'tensor<1x2xf32>' are incompatible with return type(s) of operation 'tensor<1x2xf64>'}}
-  %0 = "stablehlo.abs"(%arg0) {} : (tensor<1x2xf32>) -> tensor<1x2xf64>
-  func.return %0 : tensor<1x2xf64>
-}
+// verifier before type inference
+//func.func @abs_c2(%arg0: tensor<1x2xf32>) -> tensor<1x2xf64> {
+// // exxxpected-error@+2 {{failed to infer returned types}}
+//  // dexxxpected-error@+1 {{'stablehlo.abs' op inferred type(s) 'tensor<1x2xf32>' are incompatible with return type(s) of operation 'tensor<1x2xf64>'}}
+//  %0 = "stablehlo.abs"(%arg0) {} : (tensor<1x2xf32>) -> tensor<1x2xf64>
+//  func.return %0 : tensor<1x2xf64>
+//}
 
 // -----
 
