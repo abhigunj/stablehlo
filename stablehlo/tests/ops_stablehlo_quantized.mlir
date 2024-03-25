@@ -1001,7 +1001,8 @@ func.func @reshape_c1(%arg0: tensor<1x2x2x!quant.uniform<i8:f32, 1.0:17>>){
 // -----
 
 func.func @while_c3(%arg0: tensor<4x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<?x!quant.uniform<i8:f64, 1.0:17>> {
-  // expected-error@+1 {{expect operands to be compatible with result  but got 'tensor<4x!quant.uniform<i8:f32, 1.000000e+00:17>>' vs 'tensor<?x!quant.uniform<i8:f64, 1.000000e+00:17>>}}
+  // expected-error@+2 {{failed to infer returned types}}
+  // expected-error@+1 {{inferred type(s) 'tensor<4x!quant.uniform<i8:f32, 1.000000e+00:17>>' are incompatible with return type(s) of operation}}
   %while = "stablehlo.while"(%arg0) ({
   ^bb0(%arg1: tensor<?x!quant.uniform<i8:f32, 1.0:17>>):
     %1 = stablehlo.constant dense<true> : tensor<i1>
@@ -1015,28 +1016,23 @@ func.func @while_c3(%arg0: tensor<4x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<?
 
 // -----
 
-func.func @while_c3(%arg0: tensor<4x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<?x!quant.uniform<i8:f64, 1.0:18>> {
-  // expected-error@+1 {{expect same quantization zero_point for operand and result but got }}
-  %while = "stablehlo.while"(%arg0) ({
-  ^bb0(%arg1: tensor<?x!quant.uniform<i8:f32, 1.0:17>>):
-    %1 = stablehlo.constant dense<true> : tensor<i1>
-    stablehlo.return %1 : tensor<i1>
-  },  {
-  ^bb0(%arg1: tensor<?x!quant.uniform<i8:f32, 1.0:17>>):
-    stablehlo.return %arg1 : tensor<?x!quant.uniform<i8:f32, 1.0:17>>
-  }) : (tensor<4x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<?x!quant.uniform<i8:f32, 1.0:18>>
-  func.return %while : tensor<?x!quant.uniform<i8:f32, 1.0:18>>
-}
-
-// -----
-
 func.func @sort_c2(%input0: tensor<16x16x!quant.uniform<i8:f32, 1.0:17>>, %input1: tensor<16x16x!quant.uniform<i8:f64, 1.0:17>>) {
-  // expected-error@+1 {{expect operands to be compatible with result}}
+  // expected-error@+2 {{failed to infer returned types}}
+  // expected-error@+1 {{inferred type(s) 'tensor<16x16x!quant.uniform<i8:f32, 1.000000e+00:17>>', 'tensor<16x16x!quant.uniform<i8:f64, 1.000000e+00:17>>' are incompatible with return type(s) of operation}}
   %0:2 = "stablehlo.sort"(%input0, %input1) ({
   ^bb0(%arg0: tensor<!quant.uniform<i8:f32, 1.0:17>>, %arg1: tensor<!quant.uniform<i8:f32, 1.0:17>>, %arg2: tensor<!quant.uniform<i8:f64, 1.0:17>>, %arg3: tensor<!quant.uniform<i8:f64, 1.0:17>>):
     %7 = "stablehlo.compare"(%arg0, %arg1) {comparison_direction = #stablehlo<comparison_direction GT>} : (tensor<!quant.uniform<i8:f32, 1.0:17>>, tensor<!quant.uniform<i8:f32, 1.0:17>>) -> tensor<i1>
     "stablehlo.return"(%7) : (tensor<i1>) -> ()
   }) {dimension = 1 : i64, is_stable = true} : (tensor<16x16x!quant.uniform<i8:f32, 1.0:17>>, tensor<16x16x!quant.uniform<i8:f64, 1.0:17>>)
   -> (tensor<16x16x!quant.uniform<i8:f32, 1.0:17>>, tensor<16x16x!quant.uniform<i8:f32, 1.0:17>>)
+  func.return
+}
+
+// -----
+
+func.func @abs_c2(%arg0: tensor<1x2x2x!quant.uniform<i8:f32, 1.0:17>>) {
+   // expected-error@+2 {{failed to infer returned types}}
+   // expected-error@+1 {{op inferred type(s) 'tensor<1x2x2x!quant.uniform<i8:f32, 1.000000e+00:17>>' are incompatible with return type(s) of operation }}
+   %abs = "stablehlo.abs"(%arg0) : (tensor<1x2x2x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<1x2x2x!quant.uniform<i8:f64, 1.0:17>>
   func.return
 }

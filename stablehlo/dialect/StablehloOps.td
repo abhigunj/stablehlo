@@ -211,7 +211,6 @@ def StableHLO_AbsOp: StableHLO_UnaryElementwiseOp<"abs",
     ```
   }];
 
-  let hasVerifier = 1;
 }
 
 def StableHLO_CbrtOp: StableHLO_UnaryElementwiseOp<"cbrt",

@@ -798,10 +798,6 @@ LogicalResult AbsOp::inferReturnTypes(
   return hlo::inferAbsOp(location, adaptor.getOperand(), inferredReturnTypes);
 }
 
-LogicalResult AbsOp::verify() {
-  return hlo::verifyAbsOp(getLoc(), getOperand(), getResult());
-}
-
 //===----------------------------------------------------------------------===//
 // CollectiveBroadcastOp
 //===----------------------------------------------------------------------===//
@@ -1924,7 +1920,7 @@ LogicalResult SortOp::inferReturnTypeComponents(
 
 LogicalResult SortOp::verify() {
   return hlo::verifySortOp(getLoc(), getInputs(), getDimension(),
-                           getComparator(), getResults());
+                           getComparator());
 }
 
 //===----------------------------------------------------------------------===//
@@ -2106,8 +2102,7 @@ LogicalResult WhileOp::inferReturnTypes(
 }
 
 LogicalResult WhileOp::verify() {
-  return hlo::verifyWhileOp(getLoc(), getOperand(), getCond(), getBody(),
-                            getResults());
+  return hlo::verifyWhileOp(getLoc(), getOperand(), getCond(), getBody());
 }
 
 void WhileOp::print(OpAsmPrinter& p) {

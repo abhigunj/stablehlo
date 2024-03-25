@@ -374,9 +374,6 @@ LogicalResult inferWhileOp(std::optional<Location> location, ValueRange operand,
 // Verifiers for ops.
 //===----------------------------------------------------------------------===//
 
-LogicalResult verifyAbsOp(std::optional<Location> location, Value operand,
-                          Value result);
-
 LogicalResult verifyAllGatherOp(std::optional<Location> location, Value operand,
                                 int64_t allGatherDim,
                                 DenseIntElementsAttr replicaGroups,
@@ -523,8 +520,7 @@ LogicalResult verifySelectAndScatterOp(
     Region& scatter);
 
 LogicalResult verifySortOp(std::optional<Location> location, ValueRange inputs,
-                           int64_t dimension, Region& comparator,
-                           ValueRange results);
+                           int64_t dimension, Region& comparator);
 
 LogicalResult verifyTransposeOp(std::optional<Location> location,
                                 Type operandType,
@@ -532,8 +528,7 @@ LogicalResult verifyTransposeOp(std::optional<Location> location,
                                 Type resultType);
 
 LogicalResult verifyWhileOp(std::optional<Location> location,
-                            ValueRange operand, Region& cond, Region& body,
-                            ValueRange results);
+                            ValueRange operand, Region& cond, Region& body);
 }  // end namespace hlo
 }  // end namespace mlir
 

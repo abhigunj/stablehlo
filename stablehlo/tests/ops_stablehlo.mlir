@@ -5220,13 +5220,12 @@ func.func @abs_complex(%arg0: tensor<1x2xcomplex<f32>>) -> tensor<1x2xf32> {
 
 // -----
 
-// verifier before type inference
-//func.func @abs_c2(%arg0: tensor<1x2xf32>) -> tensor<1x2xf64> {
-// // exxxpected-error@+2 {{failed to infer returned types}}
-//  // dexxxpected-error@+1 {{'stablehlo.abs' op inferred type(s) 'tensor<1x2xf32>' are incompatible with return type(s) of operation 'tensor<1x2xf64>'}}
-//  %0 = "stablehlo.abs"(%arg0) {} : (tensor<1x2xf32>) -> tensor<1x2xf64>
-//  func.return %0 : tensor<1x2xf64>
-//}
+func.func @abs_c2(%arg0: tensor<1x2xf32>) -> tensor<1x2xf64> {
+  // expected-error@+2 {{failed to infer returned types}}
+  // expected-error@+1 {{'stablehlo.abs' op inferred type(s) 'tensor<1x2xf32>' are incompatible with return type(s) of operation 'tensor<1x2xf64>'}}
+  %0 = "stablehlo.abs"(%arg0) {} : (tensor<1x2xf32>) -> tensor<1x2xf64>
+  func.return %0 : tensor<1x2xf64>
+}
 
 // -----
 

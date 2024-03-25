@@ -104,16 +104,6 @@ LogicalResult isSameQuantScaleZeroPoint(std::optional<Location> location,
   return success();
 }
 
-LogicalResult isSameQuantScaleZeroPoint(std::optional<Location> location,
-                                        TypeRange operandTypes,
-                                        TypeRange resultTypes) {
-  for (auto [operandTy, resultTy] : llvm::zip(operandTypes, resultTypes))
-    if (failed(isSameQuantScaleZeroPoint(location, operandTy, resultTy)))
-      return failure();
-
-  return success();
-}
-
 }  // namespace
 
 //===----------------------------------------------------------------------===//
@@ -3056,21 +3046,6 @@ LogicalResult inferWhileOp(std::optional<Location>, ValueRange operand,
 // Verifiers for ops.
 //===----------------------------------------------------------------------===//
 
-LogicalResult verifyAbsOp(std::optional<Location> location, Value operand,
-                          Value result) {
-  Type operandType = operand.getType();
-  if (!getElementTypeOrSelf(operandType).isa<ComplexType>()) {
-    Type resultType = result.getType();
-    if (!isCompatibleElementTypeForHloTypeInference(operandType, resultType))
-      return emitOptionalError(location,
-                               "expect operand to be compatible with result "
-                               " but got ",
-                               operandType, " vs ", resultType);
-  }
-
-  return success();
-}
-
 LogicalResult verifyAllGatherOp(std::optional<Location> location, Value operand,
                                 int64_t allGatherDim,
                                 DenseIntElementsAttr replicaGroups,
@@ -4343,8 +4318,7 @@ LogicalResult verifySelectAndScatterOp(
 }
 
 LogicalResult verifySortOp(std::optional<Location> location, ValueRange inputs,
-                           int64_t dimension, Region& comparator,
-                           ValueRange results) {
+                           int64_t dimension, Region& comparator) {
   auto operandTypes = inputs.getTypes();
   for (auto operandType : operandTypes) {
     auto operandShapedType = operandType.cast<ShapedType>();
@@ -4393,23 +4367,12 @@ LogicalResult verifySortOp(std::optional<Location> location, ValueRange inputs,
     return emitOptionalError(location,
                              "comparator must return tensor<i1> but got ",
                              comparatorResult[0].getType());
-  // sort_c3
-  auto resultTypes = results.getTypes();
-  if (!isCompatibleForHloTypeInference(operandTypes, resultTypes))
-    return emitOptionalError(location,
-                             "expect operands to be compatible with result "
-                             " but got ",
-                             operandTypes, " vs ", resultTypes);
-  // sort_c2
-  if (failed(isSameQuantScaleZeroPoint(location, operandTypes, resultTypes)))
-    return failure();
 
   return success();
 }
 
 LogicalResult verifyWhileOp(std::optional<Location> location,
-                            ValueRange operand, Region& cond, Region& body,
-                            ValueRange result) {
+                            ValueRange operand, Region& cond, Region& body) {
   auto operandTypes = operand.getTypes();
   auto condArgsTypes = cond.front().getArgumentTypes();
   auto bodyArgsTypes = body.front().getArgumentTypes();
@@ -4445,16 +4408,6 @@ LogicalResult verifyWhileOp(std::optional<Location> location,
         location,
         "expect condition block return a zero-ranked tensor of i1 but got ",
         condReturnTypes[0]);
-  // while_c3
-  auto resultTypes = result.getTypes();
-  if (!isCompatibleForHloTypeInference(operandTypes, resultTypes))
-    return emitOptionalError(location,
-                             "expect operands to be compatible with result "
-                             " but got ",
-                             operandTypes, " vs ", resultTypes);
-  // while_c3
-  if (failed(isSameQuantScaleZeroPoint(location, operandTypes, resultTypes)))
-    return failure();
 
   return success();
 }
