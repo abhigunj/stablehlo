@@ -679,7 +679,7 @@ class StableHLO_BinaryElementwiseOp<string mnemonic, list<Trait> traits,
 }
 
 def StableHLO_AddOp : StableHLO_BinaryElementwiseOp<"add",
-      [HLO_Commutative, Pure, HLO_CompatibleOperandsAndResultType],
+      [HLO_Commutative, Pure, DeclareOpInterfaceMethods<InferTypeOpInterface>],
       HLO_TensorOrPerAxisQuantizedTensor> {
   let summary = "Add operation";
   let description = [{
@@ -694,6 +694,10 @@ def StableHLO_AddOp : StableHLO_BinaryElementwiseOp<"add",
     %result = stablehlo.add %lhs, %rhs : tensor<2x2xi32>
     ```
   }];
+
+  let builders = [
+    OpBuilder<(ins
+      "::mlir::ValueRange":$operands)>];
 }
 
 def StableHLO_Atan2Op : StableHLO_BinaryElementwiseOp<"atan2",

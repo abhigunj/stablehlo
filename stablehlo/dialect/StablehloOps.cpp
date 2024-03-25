@@ -187,6 +187,48 @@ INFER_RETURN_TYPE_COMPONENTS_FROM_OPERANDS(TanhOp)
 INFER_RETURN_TYPE_COMPONENTS_FROM_OPERANDS(XorOp)
 
 //===----------------------------------------------------------------------===//
+// AddOp
+//===----------------------------------------------------------------------===//
+
+void AddOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState,
+::mlir::ValueRange operands) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  //odsState.addAttributes(attributes);
+
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(AddOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          //odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.getRawProperties(),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
+}
+
+LogicalResult AddOp::inferReturnTypes(
+      MLIRContext * /*context*/, std::optional<Location> location,
+      ValueRange operands, DictionaryAttr /*attributes*/,
+      OpaqueProperties /*properties*/, RegionRange /*regions*/,
+      SmallVectorImpl<Type> &inferredReturnTypes) {
+    // TODO(b/231358795): Review the use of InferTypeOpInterface for ops that
+    // support quantization or sparsity.
+    if (operands.empty())
+      return emitOptionalError(
+          location,
+          "Expected non-empty operands for [CompatibleOperandsAndResultType]");
+
+    auto inferredTypeOrErr =
+        mlir::hlo::inferMostSpecificType(location, operands.getTypes());
+    if (failed(inferredTypeOrErr)) return failure();
+    inferredReturnTypes.emplace_back(*inferredTypeOrErr);
+    return success();
+  }
+
+//===----------------------------------------------------------------------===//
 // AfterAllOp
 //===----------------------------------------------------------------------===//
 
