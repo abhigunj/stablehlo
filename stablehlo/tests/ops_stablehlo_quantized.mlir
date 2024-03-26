@@ -1001,8 +1001,7 @@ func.func @reshape_c1(%arg0: tensor<1x2x2x!quant.uniform<i8:f32, 1.0:17>>){
 // -----
 
 func.func @while_c3(%arg0: tensor<4x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<?x!quant.uniform<i8:f64, 1.0:17>> {
-  // expected-error@+2 {{failed to infer returned types}}
-  // expected-error@+1 {{inferred type(s) 'tensor<4x!quant.uniform<i8:f32, 1.000000e+00:17>>' are incompatible with return type(s) of operation}}
+  // expected-error@+1 {{expect operand to be compatible with result but got 'tensor<4x!quant.uniform<i8:f32, 1.000000e+00:17>>' vs 'tensor<?x!quant.uniform<i8:f64, 1.000000e+00:17>>'}}
   %while = "stablehlo.while"(%arg0) ({
   ^bb0(%arg1: tensor<?x!quant.uniform<i8:f32, 1.0:17>>):
     %1 = stablehlo.constant dense<true> : tensor<i1>
@@ -1035,4 +1034,13 @@ func.func @abs_c2(%arg0: tensor<1x2x2x!quant.uniform<i8:f32, 1.0:17>>) {
    // expected-error@+1 {{op inferred type(s) 'tensor<1x2x2x!quant.uniform<i8:f32, 1.000000e+00:17>>' are incompatible with return type(s) of operation }}
    %abs = "stablehlo.abs"(%arg0) : (tensor<1x2x2x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<1x2x2x!quant.uniform<i8:f64, 1.0:17>>
   func.return
+}
+
+// -----
+
+func.func @select_per_tensor_quantization(%arg0: tensor<2x3xi1>, %arg1: tensor<2x3x!quant.uniform<i8:f32, 1.0:17>>, %arg2: tensor<2x3x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<2x3x!quant.uniform<i16:f32, 1.0:17>> {
+  // expected-error@+2 {{failed to infer returned types}}
+  // expected-error@+1 {{op inferred type(s) 'tensor<2x3x!quant.uniform<i8:f32, 1.000000e+00:17>>' are incompatible with return type(s) of operation 'tensor<2x3x!quant.uniform<i16:f32, 1.000000e+00:17>>'}}
+  %0 = "stablehlo.select"(%arg0, %arg1, %arg2) : (tensor<2x3xi1>, tensor<2x3x!quant.uniform<i8:f32, 1.0:17>>, tensor<2x3x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<2x3x!quant.uniform<i16:f32, 1.0:17>>
+  func.return %0 : tensor<2x3x!quant.uniform<i16:f32, 1.0:17>>
 }

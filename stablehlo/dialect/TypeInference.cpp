@@ -4207,19 +4207,6 @@ LogicalResult verifyScatterOp(std::optional<Location> location,
   return success();
 }
 
-LogicalResult verifySelectOp(std::optional<Location> location, Value onTrue,
-                             Value onFalse, Value result) {
-  Type resultType = result.getType();
-  Type onTrueType = onTrue.getType();
-  if (!isCompatibleElementTypeForHloTypeInference(onTrueType, resultType))
-    return emitOptionalError(location,
-                             "expect on_true to be compatible with result "
-                             " but got ",
-                             onTrueType, " vs ", resultType);
-
-  return success();
-}
-
 //  We intend to verify the following properties:
 //   P1. Check if the select function has a proper shape of (T,T) -> PRED, where
 //        T is a 0-D tensor with element-type same as 'operand' element-type.
@@ -4372,7 +4359,8 @@ LogicalResult verifySortOp(std::optional<Location> location, ValueRange inputs,
 }
 
 LogicalResult verifyWhileOp(std::optional<Location> location,
-                            ValueRange operand, Region& cond, Region& body) {
+                            ValueRange operand, Region& cond, Region& body,
+                            ValueRange result) {
   auto operandTypes = operand.getTypes();
   auto condArgsTypes = cond.front().getArgumentTypes();
   auto bodyArgsTypes = body.front().getArgumentTypes();
@@ -4408,6 +4396,13 @@ LogicalResult verifyWhileOp(std::optional<Location> location,
         location,
         "expect condition block return a zero-ranked tensor of i1 but got ",
         condReturnTypes[0]);
+  // while_c3
+  auto resultTypes = result.getTypes();
+  for (auto [operandType, resultType] : llvm::zip(operandTypes, resultTypes))
+    if (getElementTypeOrSelf(operandType) != getElementTypeOrSelf(resultType))
+      return emitOptionalError(
+          location, "expect operand to be compatible with result but got ",
+          operandType, " vs ", resultType);
 
   return success();
 }

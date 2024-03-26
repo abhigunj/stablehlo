@@ -2616,7 +2616,6 @@ def StableHLO_SelectOp: StableHLO_Op<"select", [Pure, HLO_BroadcastingElementwis
       custom<SelectOpType>(type($pred), type($on_true), type($on_false), type($result))
   }];
 
-   let hasVerifier = 1;
 }
 
 def StableHLO_SelectAndScatterOp: StableHLO_Op<"select_and_scatter",
@@ -2986,7 +2985,7 @@ def StableHLO_ReturnOp : StableHLO_Op<"return", [Pure, Terminator]> {
   }];
 
   let arguments = (ins
-    Variadic<HLO_TensorOrTokenOrTuple >:$results
+    Variadic<HLO_TensorOrPerAxisQuantizedTensorOrToken>:$results
   );
 
   let assemblyFormat = "$results attr-dict (`:` type($results)^)?";

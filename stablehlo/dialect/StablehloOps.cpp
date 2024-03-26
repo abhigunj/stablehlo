@@ -1661,10 +1661,6 @@ LogicalResult SelectOp::reifyReturnTypeShapes(
                                      &reifiedReturnShapes);
 }
 
-LogicalResult SelectOp::verify() {
-  return hlo::verifySelectOp(getLoc(), getOnTrue(), getOnFalse(), getResult());
-}
-
 //===----------------------------------------------------------------------===//
 // SetDimensionSizeOp
 //===----------------------------------------------------------------------===//
@@ -2102,7 +2098,7 @@ LogicalResult WhileOp::inferReturnTypes(
 }
 
 LogicalResult WhileOp::verify() {
-  return hlo::verifyWhileOp(getLoc(), getOperand(), getCond(), getBody());
+  return hlo::verifyWhileOp(getLoc(), getOperand(), getCond(), getBody(), getResults());
 }
 
 void WhileOp::print(OpAsmPrinter& p) {

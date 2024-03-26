@@ -510,8 +510,6 @@ LogicalResult verifyScatterOp(std::optional<Location> location,
                               ArrayRef<int64_t> scatterDimsToOperandDims,
                               int64_t indexVectorDim,
                               Region& updateComputation);
-LogicalResult verifySelectOp(std::optional<Location> location, Value onTrue,
-                             Value onFalse, Value result);
 LogicalResult verifySelectAndScatterOp(
     std::optional<Location> location, Value operand, Value source,
     Value initValue, std::optional<ArrayRef<int64_t>> windowDimensions,
@@ -528,7 +526,8 @@ LogicalResult verifyTransposeOp(std::optional<Location> location,
                                 Type resultType);
 
 LogicalResult verifyWhileOp(std::optional<Location> location,
-                            ValueRange operand, Region& cond, Region& body);
+                            ValueRange operand, Region& cond, Region& body,
+                            ValueRange result);
 }  // end namespace hlo
 }  // end namespace mlir
 
