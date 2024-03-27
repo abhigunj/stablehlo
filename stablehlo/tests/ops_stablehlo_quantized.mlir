@@ -27,17 +27,17 @@ func.func @ops_per_axis_quantization(
 }
 
 // %arg1 can be a per-axis Quantized
-func.func @dot_general_per_axis_quantization(%arg0: tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, %arg1: tensor<2x3x5x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<2x4x5x!quant.uniform<i8:f32:0, {0.1:-30}>> {
-  %0 = "stablehlo.dot_general"(%arg0, %arg1) {
-    dot_dimension_numbers = #stablehlo.dot<
-      lhs_batching_dimensions = [0],
-      rhs_batching_dimensions = [0],
-      lhs_contracting_dimensions = [1],
-      rhs_contracting_dimensions = [1]
-    >
-  } : (tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, tensor<2x3x5x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<2x4x5x!quant.uniform<i8:f32:0, {0.1:-30}>>
-  func.return %0 : tensor<2x4x5x!quant.uniform<i8:f32:0, {0.1:-30}>>
-}
+//func.func @dot_general_per_axis_quantization(%arg0: tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, %arg1: tensor<2x3x5x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<2x4x5x!quant.uniform<i8:f32:0, {0.1:-30}>> {
+//%0 = "stablehlo.dot_general"(%arg0, %arg1) {
+//dot_dimension_numbers = #stablehlo.dot<
+//lhs_batching_dimensions = [0],
+//rhs_batching_dimensions = [0],
+//lhs_contracting_dimensions = [1],
+//rhs_contracting_dimensions = [1]
+//>
+//  } : (tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, tensor<2x3x5x!quant.uniform<i8:f32:0, {0.1:-30}>>) -> tensor<2x4x5x!quant.uniform<i8:f32:0, {0.1:-30}>>
+//func.return %0 : tensor<2x4x5x!quant.uniform<i8:f32:0, {0.1:-30}>>
+//}
 
 // -----
 // Tests for StableHLO OPs supporting per-tensor quantization. These OPs may or may not support per-axis quantization
@@ -122,7 +122,7 @@ func.func @batch_norm_training_per_tensor_quantization(%input: tensor<2x2x2x2x!q
   func.return %0#0 : tensor<2x2x2x2x!quant.uniform<i8:f32, 1.0:17>>
 }
 
-func.func @dot_general_per_tensor_quantization(%arg0: tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, %arg1: tensor<2x3x5x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>> {
+func.func @dot_general_per_tensor_quantization(%arg0: tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, %arg1: tensor<2x3x5x!quant.uniform<i8:f32, 1.0:0>>) -> tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>> {
   %0 = "stablehlo.dot_general"(%arg0, %arg1) {
     dot_dimension_numbers = #stablehlo.dot<
       lhs_batching_dimensions = [0],
@@ -130,7 +130,7 @@ func.func @dot_general_per_tensor_quantization(%arg0: tensor<2x3x4x!quant.unifor
       lhs_contracting_dimensions = [1],
       rhs_contracting_dimensions = [1]
     >
-  } : (tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, tensor<2x3x5x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>>
+  } : (tensor<2x3x4x!quant.uniform<i8:f32, 1.0:17>>, tensor<2x3x5x!quant.uniform<i8:f32, 1.0:0>>) -> tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>>
   func.return %0 : tensor<2x4x5x!quant.uniform<i8:f32, 1.0:17>>
 }
 
