@@ -2824,7 +2824,7 @@ def StableHLO_TraceOp: StableHLO_Op<"trace"> {
 }
 
 def StableHLO_TransposeOp: StableHLO_ShapedInterfaceOp<"transpose",
-      [Pure, HLO_CompatibleOperandsAndResultElementType, /*traspose_c1*/
+      [Pure, HLO_CompatibleOperandsAndResultElementType, /*transpose_c1*/
       DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
   let summary = "Transpose operation";
   let description = [{
