@@ -87,46 +87,21 @@ bool noneQuantized(ArrayRef<Type> typeRange) {
       typeRange, [&](Type val) { return !getElementTypeOrSelf(val).isa<T>(); });
 }
 
-template <typename QuantTy>
-bool isSameQuantScaleZeroPoint(Type ty1, Type ty2) {
-  auto qty1 = getElementTypeOrSelf(ty1).dyn_cast<QuantTy>();
-  auto qty2 = getElementTypeOrSelf(ty2).dyn_cast<QuantTy>();
+bool isSameQuantPerAxisScaleZeroPoint(Type ty1, Type ty2) {
+  auto qty1 =
+      getElementTypeOrSelf(ty1).dyn_cast<quant::UniformQuantizedPerAxisType>();
+  auto qty2 =
+      getElementTypeOrSelf(ty2).dyn_cast<quant::UniformQuantizedPerAxisType>();
   if (!qty1 || !qty2) return false;
 
-  llvm::SmallVector<double> scales1;
-  llvm::SmallVector<double> scales2;
-  llvm::SmallVector<int64_t> zPoints1;
-  llvm::SmallVector<int64_t> zPoints2;
-
-  if (std::is_same<QuantTy, quant::UniformQuantizedType>::value) {
-    auto qty1 =
-        getElementTypeOrSelf(ty1).dyn_cast<quant::UniformQuantizedType>();
-    auto qty2 =
-        getElementTypeOrSelf(ty2).dyn_cast<quant::UniformQuantizedType>();
-    scales1.push_back(qty1.getScale());
-    scales2.push_back(qty2.getScale());
-    zPoints1.push_back(qty1.getZeroPoint());
-    zPoints2.push_back(qty2.getZeroPoint());
-  }
-
-  if (std::is_same<QuantTy, quant::UniformQuantizedPerAxisType>::value) {
-    auto qty1 = getElementTypeOrSelf(ty1)
-                    .dyn_cast<quant::UniformQuantizedPerAxisType>();
-    auto qty2 = getElementTypeOrSelf(ty2)
-                    .dyn_cast<quant::UniformQuantizedPerAxisType>();
-    scales1.append(qty1.getScales().begin(), qty1.getScales().end());
-    scales2.append(qty2.getScales().begin(), qty2.getScales().end());
-    zPoints1.append(qty1.getZeroPoints().begin(), qty1.getZeroPoints().end());
-    zPoints2.append(qty2.getZeroPoints().begin(), qty2.getZeroPoints().end());
-  }
-
-  if (scales1.size() != scales2.size() || zPoints1.size() != zPoints2.size())
+  if (qty1.getScales().size() != qty1.getScales().size() ||
+      qty1.getZeroPoints() != qty2.getZeroPoints())
     return false;
 
-  for (auto [lhs, rhs] : llvm::zip(scales1, scales2))
+  for (auto [lhs, rhs] : llvm::zip(qty1.getScales(), qty2.getScales()))
     if (lhs != rhs) return false;
 
-  for (auto [lhs, rhs] : llvm::zip(zPoints1, zPoints2))
+  for (auto [lhs, rhs] : llvm::zip(qty1.getZeroPoints(), qty2.getZeroPoints()))
     if (lhs != rhs) return false;
 
   return true;
@@ -337,16 +312,14 @@ LogicalResult verifyTransposeOp(std::optional<Location> location,
                                 Type resultType) {
   // transpose_c1
   if (allQuantized<quant::UniformQuantizedType>(operandType, resultType))
-    if (!isSameQuantScaleZeroPoint<quant::UniformQuantizedType>(operandType,
-                                                                resultType))
+    if (operandType != resultType)
       return emitOptionalError(location,
                                "expect same quantization scale and zero_point "
                                "for operand and result but got ",
                                operandType, " vs ", resultType);
 
   if (allQuantized<quant::UniformQuantizedPerAxisType>(operandType, resultType))
-    if (!isSameQuantScaleZeroPoint<quant::UniformQuantizedPerAxisType>(
-            operandType, resultType))
+    if (!isSameQuantPerAxisScaleZeroPoint(operandType, resultType))
       return emitOptionalError(location,
                                "expect same quantization scales and "
                                "zero_points for operand and result but got ",
@@ -3279,8 +3252,7 @@ LogicalResult verifyBroadcastInDimOp(std::optional<Location> location,
   // broadcast_in_dim_c1
   if (allQuantized<quant::UniformQuantizedType>(operand.getType(),
                                                 result.getType()))
-    if (!isSameQuantScaleZeroPoint<quant::UniformQuantizedType>(
-            operand.getType(), result.getType()))
+    if (operand.getType() != result.getType())
       return emitOptionalError(location,
                                "expect same quantization scale and zero_point "
                                "for operand and result but got ",
@@ -4039,15 +4011,13 @@ LogicalResult verifyReshapeOp(std::optional<Location> location, Value operand,
 
   // reshape_c1
   if (allQuantized<quant::UniformQuantizedType>(operandTy, resultTy))
-    if (!isSameQuantScaleZeroPoint<quant::UniformQuantizedType>(operandTy,
-                                                                resultTy))
+    if (operandTy != resultTy)
       return emitOptionalError(location,
                                "expect same quantization scale and zero_point "
                                "for operand and result but got ",
                                operandTy, " vs ", result.getType());
   if (allQuantized<quant::UniformQuantizedPerAxisType>(operandTy, resultTy))
-    if (!isSameQuantScaleZeroPoint<quant::UniformQuantizedPerAxisType>(
-            operandTy, resultTy))
+    if (!isSameQuantPerAxisScaleZeroPoint(operandTy, resultTy))
       return emitOptionalError(
           location,
           "expect same quantization scales and zero_points "
