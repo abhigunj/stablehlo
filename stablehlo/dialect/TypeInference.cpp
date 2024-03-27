@@ -3524,8 +3524,7 @@ LogicalResult verifyDotGeneralOp(std::optional<Location> location, Value lhs,
 
   auto inferredShape = inferredReturnShapes[0];
   auto resultType = result.getType().cast<ShapedType>();
-  if (inferredShape.hasRank() && resultType.hasRank() &&
-      failed(verifyCompatibleShape(inferredShape.getDims(),
+  if (failed(verifyCompatibleShape(inferredShape.getDims(),
                                    resultType.getShape())))
     return emitOptionalError(
         location, "inferred shape '", dimSizesToString(inferredShape.getDims()),
@@ -4379,13 +4378,11 @@ LogicalResult verifySortOp(std::optional<Location> location, ValueRange inputs,
     return emitOptionalError(location,
                              "comparator must return tensor<i1> but got ",
                              comparatorResult[0].getType());
-
   return success();
 }
 
 LogicalResult verifyWhileOp(std::optional<Location> location,
-                            ValueRange operand, Region& cond, Region& body,
-                            ValueRange result) {
+                            ValueRange operand, Region& cond, Region& body) {
   auto operandTypes = operand.getTypes();
   auto condArgsTypes = cond.front().getArgumentTypes();
   auto bodyArgsTypes = body.front().getArgumentTypes();
