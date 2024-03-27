@@ -1036,7 +1036,8 @@ func.func @reshape_c1(%arg0: tensor<1x2x2x!quant.uniform<i8:f32:0, {1.0:17}>>){
 // -----
 
 func.func @while_c3(%arg0: tensor<4x!quant.uniform<i8:f32, 1.0:17>>) -> tensor<?x!quant.uniform<i8:f64, 1.0:17>> {
-  // expected-error@+1 {{expect operand to be compatible with result but got 'tensor<4x!quant.uniform<i8:f32, 1.000000e+00:17>>' vs 'tensor<?x!quant.uniform<i8:f64, 1.000000e+00:17>>'}}
+  // expected-error@+2 {{op failed to infer returned types}}
+  // expected-error@+1 {{op inferred type(s) 'tensor<4x!quant.uniform<i8:f32, 1.000000e+00:17>>' are incompatible with return type(s) of operation}}
   %while = "stablehlo.while"(%arg0) ({
   ^bb0(%arg1: tensor<?x!quant.uniform<i8:f32, 1.0:17>>):
     %1 = stablehlo.constant dense<true> : tensor<i1>

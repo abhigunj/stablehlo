@@ -4451,13 +4451,6 @@ LogicalResult verifyWhileOp(std::optional<Location> location,
         location,
         "expect condition block return a zero-ranked tensor of i1 but got ",
         condReturnTypes[0]);
-  // while_c3
-  auto resultTypes = result.getTypes();
-  for (auto [operandType, resultType] : llvm::zip(operandTypes, resultTypes))
-    if (getElementTypeOrSelf(operandType) != getElementTypeOrSelf(resultType))
-      return emitOptionalError(
-          location, "expect operand to be compatible with result but got ",
-          operandType, " vs ", resultType);
 
   return success();
 }
