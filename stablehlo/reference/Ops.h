@@ -200,6 +200,7 @@ Tensor subtractOp(const Tensor &lhs, const Tensor &rhs, ShapedType resultType);
 Tensor tanhOp(const Tensor &operand, ShapedType resultType);
 Tensor transposeOp(const Tensor &operand, const Axes &permutation,
                    ShapedType resultType);
+Tensor evalTanOp(const Tensor &operand, ShapedType resultType);
 Tuple tupleOp(ArrayRef<InterpreterValue> val, TupleType resultType);
 SmallVector<InterpreterValue> whileOp(SmallVector<InterpreterValue> operand,
                                       Region &cond, Region &body,
