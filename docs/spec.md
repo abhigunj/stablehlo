@@ -2636,6 +2636,77 @@ planning to address this in
 
 &nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/dot_general.mlir)
 
+### pad
+
+#### Semantics
+
+Expands `operand` by padding around the tensor as well as between the elements
+of the tensor with the given `padding_value`.
+
+`edge_padding_low` and `edge_padding_high` specify the amount of padding added
+at the low-end (next to index 0) and the high-end (next to the highest index) of
+each dimension respectively. The amount of padding can be negative, where the
+absolute value of negative padding indicates the number of elements to remove
+from the specified dimension.
+
+`interior_padding` specifies the amount of padding added between any two
+elements in each dimension which may not be negative. Interior padding occurs
+before edge padding such that negative edge padding will remove elements from
+the interior-padded operand.
+
+Informally, this operation does the same thing as
+[pad Op](https://github.com/openxla/stablehlo/blob/main/docs/spec.md#pad) except
+that `edge_padding_low`, `edge_padding_high` and `interior_padding` are
+specified dynamically.
+
+#### Inputs
+
+| Label | Name                | Type                                                | Constraints      |
+|-------|---------------------|-----------------------------------------------------|------------------|
+| (I1)  | `operand`           | tensor or per-tensor quantized tensor               | (C1), (C2), (C4) |
+| (I2)  | `padding_value`     | 0-dimensional tensor or per-tensor quantized tensor | (C1)             |
+| (I3)  | `edge_padding_low`  | 1-dimensional tensor constant of type `si64`        | (C1), (C4)       |
+| (I4)  | `edge_padding_high` | 1-dimensional tensor constant of type `si64`        | (C1), (C4)       |
+| (I5)  | `interior_padding`  | 1-dimensional tensor constant of type `si64`        | (C2-C4)          |
+
+#### Outputs
+
+| Name     | Type                                  | Constraints |
+|----------|---------------------------------------|-------------|
+| `result` | tensor or per-tensor quantized tensor | (C3-C6)     |
+
+#### Constraints
+
+* (C1) `element_type(operand) = element_type(padding_value) =
+  element_type(result)`.
+* (C2) `size(edge_padding_low) = size(edge_padding_high) =
+  size(interior_padding) = rank(operand)`.
+* (C3) `0 <= interior_padding`.
+* (C4) `shape(result) = shape(operand) + edge_padding_low +
+  max(shape(operand) - 1, 0) * interior_padding + edge_padding_high`.
+
+#### Examples
+
+```mlir
+// %operand: [
+//            [1, 2, 3],
+//            [4, 5, 6]
+//           ]
+// %padding_value: 0
+%result = "stablehlo.pad"(%operand, %padding_value) {
+  edge_padding_low = array<i64: 0, 1>,
+  edge_padding_high = array<i64: 2, 1>,
+  interior_padding = array<i64: 1, 2>
+} : (tensor<2x3xi32>, tensor<i32>) -> tensor<5x9xi32>
+// %result: [
+//           [0, 1, 0, 0, 2, 0, 0, 3, 0],
+//           [0, 0, 0, 0, 0, 0, 0, 0, 0],
+//           [0, 4, 0, 0, 5, 0, 0, 6, 0],
+//           [0, 0, 0, 0, 0, 0, 0, 0, 0],
+//           [0, 0, 0, 0, 0, 0, 0, 0, 0]
+//          ]
+```
+
 ### dynamic_slice
 
 #### Semantics
