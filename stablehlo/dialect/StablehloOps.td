@@ -651,7 +651,7 @@ def StableHLO_TanOp: StableHLO_UnaryElementwiseOp<"tan",
 
     Example:
     ```mlir
-    %result = stablehlo.tan %operand : tensor<2xf32>
+    %result = "stablehlo.tan"(%operand) : (tensor<2x2xf64>) -> tensor<2x2xf64>
     ```
   }];
 }
