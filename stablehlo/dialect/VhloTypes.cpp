@@ -37,21 +37,24 @@ Type convertBuiltinIntegerType(IntegerType type) {
   bool isSignless = type.isSignless();
   auto ctx = type.getContext();
   switch (type.getWidth()) {
+    case 2:
+      return isSignless ? cast<Type>(IntegerSI2V1Type::get(ctx))
+                        : cast<Type>(IntegerUI2V1Type::get(ctx));
     case 4:
-      return isSignless ? IntegerSI4V1Type::get(ctx).cast<Type>()
-                        : IntegerUI4V1Type::get(ctx).cast<Type>();
+      return isSignless ? cast<Type>(IntegerSI4V1Type::get(ctx))
+                        : cast<Type>(IntegerUI4V1Type::get(ctx));
     case 8:
-      return isSignless ? IntegerSI8V1Type::get(ctx).cast<Type>()
-                        : IntegerUI8V1Type::get(ctx).cast<Type>();
+      return isSignless ? cast<Type>(IntegerSI8V1Type::get(ctx))
+                        : cast<Type>(IntegerUI8V1Type::get(ctx));
     case 16:
-      return isSignless ? IntegerSI16V1Type::get(ctx).cast<Type>()
-                        : IntegerUI16V1Type::get(ctx).cast<Type>();
+      return isSignless ? cast<Type>(IntegerSI16V1Type::get(ctx))
+                        : cast<Type>(IntegerUI16V1Type::get(ctx));
     case 32:
-      return isSignless ? IntegerSI32V1Type::get(ctx).cast<Type>()
-                        : IntegerUI32V1Type::get(ctx).cast<Type>();
+      return isSignless ? cast<Type>(IntegerSI32V1Type::get(ctx))
+                        : cast<Type>(IntegerUI32V1Type::get(ctx));
     case 64:
-      return isSignless ? IntegerSI64V1Type::get(ctx).cast<Type>()
-                        : IntegerUI64V1Type::get(ctx).cast<Type>();
+      return isSignless ? cast<Type>(IntegerSI64V1Type::get(ctx))
+                        : cast<Type>(IntegerUI64V1Type::get(ctx));
   }
   return {};
 }
@@ -124,8 +127,8 @@ void VhloTypeConverter::addBuiltinToVhloConversions() {
     Type convertedStorageType = convertType(type.getStorageType());
     Type convertedExpressedType = convertType(type.getExpressedType());
     if (!convertedStorageType || !convertedExpressedType) return {};
-    SmallVector<APFloat> scales = llvm::to_vector(llvm::map_range(
-        type.getScales(), [](double scale) { return APFloat(scale); }));
+    auto scales = llvm::map_to_vector(
+        type.getScales(), [](double scale) { return APFloat(scale); });
     return vhlo::UniformQuantizedPerAxisV1Type::get(
         type.getContext(), type.getFlags(), convertedStorageType,
         convertedExpressedType, type.getQuantizedDimension(), scales,
@@ -183,6 +186,9 @@ void VhloTypeConverter::addVhloToBuiltinConversions() {
   });
   addConversion(
       [&](IndexV1Type type) { return IndexType::get(type.getContext()); });
+  addConversion([&](IntegerSI2V1Type type) {
+    return IntegerType::get(type.getContext(), 2);
+  });
   addConversion([&](IntegerSI4V1Type type) {
     return IntegerType::get(type.getContext(), 4);
   });
@@ -197,6 +203,9 @@ void VhloTypeConverter::addVhloToBuiltinConversions() {
   });
   addConversion([&](IntegerSI64V1Type type) {
     return IntegerType::get(type.getContext(), 64);
+  });
+  addConversion([&](IntegerUI2V1Type type) {
+    return IntegerType::get(type.getContext(), 2, IntegerType::Unsigned);
   });
   addConversion([&](IntegerUI4V1Type type) {
     return IntegerType::get(type.getContext(), 4, IntegerType::Unsigned);
@@ -239,9 +248,9 @@ void VhloTypeConverter::addVhloToBuiltinConversions() {
     Type convertedStorageType = convertType(type.getStorageType());
     Type convertedExpressedType = convertType(type.getExpressedType());
     if (!convertedStorageType || !convertedExpressedType) return {};
-    SmallVector<double> scales = llvm::to_vector(llvm::map_range(
+    auto scales = llvm::map_to_vector(
         type.getScales(),
-        [](const APFloat& scale) { return scale.convertToDouble(); }));
+        [](const APFloat& scale) { return scale.convertToDouble(); });
     return quant::UniformQuantizedPerAxisType::get(
         type.getFlags(), convertedStorageType, convertedExpressedType, scales,
         type.getZeroPoints(), type.getQuantizedDimension(),

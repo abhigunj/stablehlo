@@ -18,14 +18,18 @@ add_mlir_library(StablehloReferenceApi
 
   LINK_LIBS PUBLIC
   MLIRIR
+  MLIRParser
+  MLIRPass
   MLIRSupport
   InterpreterOps
+  StablehloPasses
   StablehloReferenceConfiguration
   StablehloReferenceErrors
   StablehloReferenceNumPy
   StablehloReferenceOps
   StablehloReferenceProcess
   StablehloReferenceScope
+  StablehloReferenceTensor
   StablehloReferenceValue
   StablehloRegister
 )
@@ -91,12 +95,33 @@ add_mlir_dialect_library(InterpreterOps
   InterpreterOpsIncGen
 
   LINK_LIBS PUBLIC
+  StablehloBase
   StablehloReferenceValue
   StablehloReferenceNumPy
   StablehloReferenceOps
   StablehloReferenceProcessGrid
   MLIRIR
   MLIRSupport
+)
+
+set(LLVM_TARGET_DEFINITIONS InterpreterPasses.td)
+mlir_tablegen(InterpreterPasses.h.inc -gen-pass-decls -name InterpreterTransforms)
+add_public_tablegen_target(InterpreterTransformsPassIncGen)
+
+add_mlir_library(InterpreterPasses
+  PARTIAL_SOURCES_INTENDED
+  InterpreterInstrumentWithProbe.cpp
+
+  DEPENDS
+  InterpreterTransformsPassIncGen
+
+  LINK_LIBS PUBLIC
+  InterpreterOps
+  MLIRIR
+  MLIRPass
+  MLIRSupport
+  MLIRTransforms
+  MLIRTransformUtils
 )
 
 add_mlir_dialect_library(StablehloReferenceNumPy

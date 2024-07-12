@@ -17,10 +17,12 @@
 
 # pylint: disable=wildcard-import,undefined-variable
 
-import re
 import io
+import re
 from mlir import ir
+from mlir import passmanager as pm
 from mlir.dialects import stablehlo
+import numpy as np
 
 
 def run(f):
@@ -111,17 +113,26 @@ def test_gather_dimension_numbers():
   attr = stablehlo.GatherDimensionNumbers.get(
       offset_dims=[1, 2],
       collapsed_slice_dims=[3, 4, 5],
-      start_index_map=[6],
-      index_vector_dim=7)
+      operand_batching_dims=[6, 7],
+      start_indices_batching_dims=[8, 9],
+      start_index_map=[10],
+      index_vector_dim=11,
+  )
   assert attr is not None
-  assert str(attr) == ("#stablehlo.gather<offset_dims = [1, 2], "
-                       "collapsed_slice_dims = [3, 4, 5], "
-                       "start_index_map = [6], "
-                       "index_vector_dim = 7>")
+  assert str(attr) == (
+      "#stablehlo.gather<offset_dims = [1, 2], "
+      "collapsed_slice_dims = [3, 4, 5], "
+      "operand_batching_dims = [6, 7], "
+      "start_indices_batching_dims = [8, 9], "
+      "start_index_map = [10], "
+      "index_vector_dim = 11>"
+  )
   assert attr.offset_dims == [1, 2]
   assert attr.collapsed_slice_dims == [3, 4, 5]
-  assert attr.start_index_map == [6]
-  assert attr.index_vector_dim == 7
+  assert attr.operand_batching_dims == [6, 7]
+  assert attr.start_indices_batching_dims == [8, 9]
+  assert attr.start_index_map == [10]
+  assert attr.index_vector_dim == 11
 
 
 @run
@@ -168,17 +179,26 @@ def test_scatter_dimension_numbers():
   attr = stablehlo.ScatterDimensionNumbers.get(
       update_window_dims=[1, 2, 3],
       inserted_window_dims=[4, 5],
-      scattered_dims_to_operand_dims=[6, 7],
-      index_vector_dim=8)
+      input_batching_dims=[6, 7],
+      scatter_indices_batching_dims=[8, 9],
+      scattered_dims_to_operand_dims=[10, 11],
+      index_vector_dim=12,
+  )
   assert attr is not None
-  assert str(attr) == ("#stablehlo.scatter<update_window_dims = [1, 2, 3], "
-                       "inserted_window_dims = [4, 5], "
-                       "scatter_dims_to_operand_dims = [6, 7], "
-                       "index_vector_dim = 8>")
+  assert str(attr) == (
+      "#stablehlo.scatter<update_window_dims = [1, 2, 3], "
+      "inserted_window_dims = [4, 5], "
+      "input_batching_dims = [6, 7], "
+      "scatter_indices_batching_dims = [8, 9], "
+      "scatter_dims_to_operand_dims = [10, 11], "
+      "index_vector_dim = 12>"
+  )
   assert attr.update_window_dims == [1, 2, 3]
   assert attr.inserted_window_dims == [4, 5]
-  assert attr.scattered_dims_to_operand_dims == [6, 7]
-  assert attr.index_vector_dim == 8
+  assert attr.input_batching_dims == [6, 7]
+  assert attr.scatter_indices_batching_dims == [8, 9]
+  assert attr.scattered_dims_to_operand_dims == [10, 11]
+  assert attr.index_vector_dim == 12
 
 
 @run
@@ -227,12 +247,50 @@ def test_minimum_version():
   assert is_semver_format(curr_version)
 
 
-ASM = """
-func.func @test(%arg0: tensor<2xf32>) -> tensor<2xf32> {
-  %0 = stablehlo.add %arg0, %arg0 : (tensor<2xf32>, tensor<2xf32>) -> tensor<2xf32>
-  func.return %0 : tensor<2xf32>
-}
+ASM_FORMAT = """
+func.func @test(%arg0: tensor<{0}>) -> tensor<{0}> {{
+  %0 = stablehlo.add %arg0, %arg0 : (tensor<{0}>, tensor<{0}>) -> tensor<{0}>
+  func.return %0 : tensor<{0}>
+}}
 """
+
+
+@run
+def test_reference_api():
+  # Formatted as (tensor_type, np_value)
+  # Program runs arg + arg, which is used for expected value
+  tests = [
+    # No numpy types for f8 - skipping fp8 tests
+    ("f16", np.asarray(1, np.float16)),
+    ("f32", np.asarray(2, np.float32)),
+    ("f64", np.asarray(3, np.double)),
+    ("1xi8", np.asarray([4], np.int8)),
+    ("1xi16", np.asarray([5], np.int16)),
+    ("1xi32", np.asarray([-6], np.int32)),
+    # Numpy's uint treated as int by DenseElementsAttr, skipping np.uint tests
+    ("2x2xf16", np.asarray([1, 2, 3, 4], np.float16).reshape(2,2)),
+    ("2x1x2xf16", np.asarray([1, 2, 3, 4], np.float16).reshape(2,1,2)),
+    ("?x?xf16", np.asarray([1, 2, 3, 4], np.float16).reshape(2,2)),
+    ("?x2xf16", np.asarray([1, 2, 3, 4], np.float16).reshape(2,2)),
+  ]
+  for test in tests:
+    tensor_type, arg = test
+    with ir.Context() as context:
+      stablehlo.register_dialect(context)
+      m = ir.Module.parse(ASM_FORMAT.format(tensor_type))
+      args = [ir.DenseIntElementsAttr.get(arg)]
+
+    actual = np.array(stablehlo.eval_module(m, args)[0])
+    expected = arg + arg
+    assert (actual == expected).all()
+
+
+@run
+def test_get_smaller_version():
+  curr_version = stablehlo.get_current_version()
+  min_version = stablehlo.get_minimum_version()
+  assert stablehlo.get_smaller_version(curr_version, min_version) == min_version
+
 
 @run
 def test_serialization_apis():
@@ -240,12 +298,13 @@ def test_serialization_apis():
 
   with ir.Context() as context:
     stablehlo.register_dialect(context)
-    m = ir.Module.parse(ASM)
-    module_str = str(m)
+    m = ir.Module.parse(ASM_FORMAT.format("2xf32"))
     assert m is not None
+    module_str = str(m)
     serialized = stablehlo.serialize_portable_artifact(m, curr_version)
     deserialized = stablehlo.deserialize_portable_artifact(context, serialized)
     assert module_str == str(deserialized)
+
 
 @run
 def test_str_serialization_apis():
@@ -258,11 +317,31 @@ def test_str_serialization_apis():
 
   with ir.Context() as context:
     stablehlo.register_dialect(context)
-    m = ir.Module.parse(ASM)
-    module_str = str(m)
+    m = ir.Module.parse(ASM_FORMAT.format("2xf32"))
     assert m is not None
+    module_str = str(m)
     bytecode = module_to_bytecode(m)
     serialized = stablehlo.serialize_portable_artifact(bytecode, curr_version)
     deserialized = stablehlo.deserialize_portable_artifact(serialized)
     deserialized_module = ir.Module.parse(deserialized)
     assert module_str == str(deserialized_module)
+
+
+@run
+def test_register_passes():
+  """Tests pass registration."""
+  with ir.Context() as context:
+    stablehlo.register_dialect(context)
+    module = ir.Module.parse(ASM_FORMAT.format("2xf32"))
+    assert module is not None
+
+    stablehlo.register_stablehlo_passes()
+    pipeline = [
+        "stablehlo-legalize-to-vhlo",
+        "vhlo-legalize-to-stablehlo",
+    ]
+    pipeline = pm.PassManager.parse(f"builtin.module({','.join(pipeline)})")
+
+    cloned_module = module.operation.clone()
+    pipeline.run(cloned_module.operation)
+    assert str(module) == str(cloned_module)

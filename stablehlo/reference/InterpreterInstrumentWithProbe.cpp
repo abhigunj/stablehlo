@@ -1,4 +1,4 @@
-/* Copyright 2023 The StableHLO Authors.
+/* Copyright 2024 The StableHLO Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,29 +19,27 @@ limitations under the License.
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/Value.h"
 #include "mlir/Support/LLVM.h"
-#include "stablehlo/dialect/StablehloOps.h"
 #include "stablehlo/reference/InterpreterOps.h"
-#include "stablehlo/transforms/Passes.h"
+#include "stablehlo/reference/InterpreterPasses.h"
 
 namespace mlir {
 namespace stablehlo {
-
-#define GEN_PASS_DEF_STABLEHLOINSTRUMENTWITHPROBEPASS
-#include "stablehlo/transforms/Passes.h.inc"
+#define GEN_PASS_DEF_INTERPRETERINSTRUMENTWITHPROBEPASS
+#include "stablehlo/reference/InterpreterPasses.h.inc"
 
 namespace {
 
-class StablehloInstrumentWithProbePass
-    : public impl::StablehloInstrumentWithProbePassBase<
-          StablehloInstrumentWithProbePass> {
+class InterpreterInstrumentWithProbePass
+    : public impl::InterpreterInstrumentWithProbePassBase<
+          InterpreterInstrumentWithProbePass> {
  public:
-  StablehloInstrumentWithProbePass()
-      : StablehloInstrumentWithProbePassBase<
-            StablehloInstrumentWithProbePass>() {}
-  StablehloInstrumentWithProbePass(
-      const StablehloInstrumentWithProbePassOptions& opts)
-      : StablehloInstrumentWithProbePassBase<StablehloInstrumentWithProbePass>(
-            opts){};
+  InterpreterInstrumentWithProbePass()
+      : InterpreterInstrumentWithProbePassBase<
+            InterpreterInstrumentWithProbePass>() {}
+  InterpreterInstrumentWithProbePass(
+      const InterpreterInstrumentWithProbePassOptions& opts)
+      : InterpreterInstrumentWithProbePassBase<
+            InterpreterInstrumentWithProbePass>(opts){};
   void runOnOperation() override;
 
  private:
@@ -65,9 +63,9 @@ class StablehloInstrumentWithProbePass
   bool shouldProbeValue(Value value) const;
 };
 
-std::string StablehloInstrumentWithProbePass::getLocationNameOrUniqueId(
+std::string InterpreterInstrumentWithProbePass::getLocationNameOrUniqueId(
     Location location, unsigned int id) {
-  auto namedLocation = location.dyn_cast<NameLoc>();
+  auto namedLocation = dyn_cast<NameLoc>(location);
   std::string probeName = "probe";
 
   if (useDebugInfoOption && namedLocation)
@@ -78,9 +76,9 @@ std::string StablehloInstrumentWithProbePass::getLocationNameOrUniqueId(
   return probeName + std::to_string(id);
 }
 
-void StablehloInstrumentWithProbePass::probeValue(Value value,
-                                                  const std::string& probe_id,
-                                                  OpBuilder& builder) {
+void InterpreterInstrumentWithProbePass::probeValue(Value value,
+                                                    const std::string& probe_id,
+                                                    OpBuilder& builder) {
   builder.setInsertionPointAfterValue(value);
   Value instrumentedValue = builder.create<interpreter::ProbeOp>(
       value.getLoc(), value, StringAttr::get(&getContext(), probe_id));
@@ -88,7 +86,7 @@ void StablehloInstrumentWithProbePass::probeValue(Value value,
                              instrumentedValue.getDefiningOp());
 }
 
-void StablehloInstrumentWithProbePass::runOnOperation() {
+void InterpreterInstrumentWithProbePass::runOnOperation() {
   ModuleOp module = getOperation();
   OpBuilder builder(module);
 
@@ -109,18 +107,18 @@ void StablehloInstrumentWithProbePass::runOnOperation() {
   });
 }
 
-bool StablehloInstrumentWithProbePass::shouldProbeOp(Operation& op) const {
+bool InterpreterInstrumentWithProbePass::shouldProbeOp(Operation& op) const {
   if (isa<ConstantOp>(op)) return false;
 
-  // Operations that do not produce values should not be instrumented (ReturnOp,
-  // TraceOp, etc.)
+  // Operations that do not produce values should not be instrumented
+  // (ReturnOp, CustomCallOp with no result, etc)
   if (op.getNumResults() == 0) return false;
 
   return true;
 }
 
-bool StablehloInstrumentWithProbePass::shouldProbeValue(Value value) const {
-  return value.getType().isa<TensorType>();
+bool InterpreterInstrumentWithProbePass::shouldProbeValue(Value value) const {
+  return isa<TensorType>(value.getType());
 }
 
 }  // namespace

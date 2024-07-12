@@ -230,6 +230,10 @@ enum TypeCode {
   ///   }
   kIndexV1Type = 9,
 
+  ///   IntegerSI2V1Type {
+  ///   }
+  kIntegerSI2V1Type = 31,
+
   ///   IntegerSI4V1Type {
   ///   }
   kIntegerSI4V1Type = 10,
@@ -249,6 +253,10 @@ enum TypeCode {
   ///   IntegerSI64V1Type {
   ///   }
   kIntegerSI64V1Type = 14,
+
+  ///   IntegerUI2V1Type {
+  ///   }
+  kIntegerUI2V1Type = 32,
 
   ///   IntegerUI4V1Type {
   ///   }
@@ -674,15 +682,15 @@ void VhloBytecodeInterface::write(FftTypeV1Attr attr,
 namespace {
 /// Returns the floating semantics for the given type.
 const llvm::fltSemantics &getFloatSemantics(Type type) {
-  if (type.isa<FloatBF16V1Type>()) return APFloat::BFloat();
-  if (type.isa<FloatF16V1Type>()) return APFloat::IEEEhalf();
-  if (type.isa<FloatF32V1Type>()) return APFloat::IEEEsingle();
-  if (type.isa<FloatF64V1Type>()) return APFloat::IEEEdouble();
-  if (type.isa<FloatF8E4M3FNUZV1Type>()) return APFloat::Float8E4M3FNUZ();
-  if (type.isa<FloatF8E4M3B11FNUZV1Type>()) return APFloat::Float8E4M3B11FNUZ();
-  if (type.isa<FloatF8E4M3FNV1Type>()) return APFloat::Float8E4M3FN();
-  if (type.isa<FloatF8E5M2FNUZV1Type>()) return APFloat::Float8E5M2FNUZ();
-  if (type.isa<FloatF8E5M2V1Type>()) return APFloat::Float8E5M2();
+  if (isa<FloatBF16V1Type>(type)) return APFloat::BFloat();
+  if (isa<FloatF16V1Type>(type)) return APFloat::IEEEhalf();
+  if (isa<FloatF32V1Type>(type)) return APFloat::IEEEsingle();
+  if (isa<FloatF64V1Type>(type)) return APFloat::IEEEdouble();
+  if (isa<FloatF8E4M3FNUZV1Type>(type)) return APFloat::Float8E4M3FNUZ();
+  if (isa<FloatF8E4M3B11FNUZV1Type>(type)) return APFloat::Float8E4M3B11FNUZ();
+  if (isa<FloatF8E4M3FNV1Type>(type)) return APFloat::Float8E4M3FN();
+  if (isa<FloatF8E5M2FNUZV1Type>(type)) return APFloat::Float8E5M2FNUZ();
+  if (isa<FloatF8E5M2V1Type>(type)) return APFloat::Float8E5M2();
   llvm::report_fatal_error("unsupported floating-point type");
 }
 }  // namespace
@@ -713,11 +721,11 @@ void VhloBytecodeInterface::write(FloatV1Attr attr,
 
 namespace {
 unsigned getBitWidthForIntegerType(Type type) {
-  if (type.isa<IntegerSI4V1Type>() || type.isa<IntegerUI4V1Type>()) return 4;
-  if (type.isa<IntegerSI8V1Type>() || type.isa<IntegerUI8V1Type>()) return 8;
-  if (type.isa<IntegerSI16V1Type>() || type.isa<IntegerUI16V1Type>()) return 16;
-  if (type.isa<IntegerSI32V1Type>() || type.isa<IntegerUI32V1Type>()) return 32;
-  if (type.isa<IntegerSI64V1Type>() || type.isa<IntegerUI64V1Type>()) return 64;
+  if (isa<IntegerSI4V1Type>(type) || isa<IntegerUI4V1Type>(type)) return 4;
+  if (isa<IntegerSI8V1Type>(type) || isa<IntegerUI8V1Type>(type)) return 8;
+  if (isa<IntegerSI16V1Type>(type) || isa<IntegerUI16V1Type>(type)) return 16;
+  if (isa<IntegerSI32V1Type>(type) || isa<IntegerUI32V1Type>(type)) return 32;
+  if (isa<IntegerSI64V1Type>(type) || isa<IntegerUI64V1Type>(type)) return 64;
   llvm::report_fatal_error("unsupported integer type");
 }
 }  // namespace
@@ -730,7 +738,7 @@ IntegerV1Attr VhloBytecodeInterface::readIntegerV1Attr(
 
   // Extract the value storage width from the type.
   unsigned bitWidth;
-  if (type.isa<IndexV1Type>()) {
+  if (isa<IndexV1Type>(type)) {
     bitWidth = IndexType::kInternalStorageBitWidth;
   } else {
     bitWidth = getBitWidthForIntegerType(type);
@@ -959,6 +967,8 @@ Type VhloBytecodeInterface::readType(DialectBytecodeReader &reader) const {
       return readFunctionV1Type(reader);
     case vhlo_encoding::kIndexV1Type:
       return IndexV1Type::get(getContext());
+    case vhlo_encoding::kIntegerSI2V1Type:
+      return IntegerSI2V1Type::get(getContext());
     case vhlo_encoding::kIntegerSI4V1Type:
       return IntegerSI4V1Type::get(getContext());
     case vhlo_encoding::kIntegerSI8V1Type:
@@ -969,6 +979,8 @@ Type VhloBytecodeInterface::readType(DialectBytecodeReader &reader) const {
       return IntegerSI32V1Type::get(getContext());
     case vhlo_encoding::kIntegerSI64V1Type:
       return IntegerSI64V1Type::get(getContext());
+    case vhlo_encoding::kIntegerUI2V1Type:
+      return IntegerUI2V1Type::get(getContext());
     case vhlo_encoding::kIntegerUI4V1Type:
       return IntegerUI4V1Type::get(getContext());
     case vhlo_encoding::kIntegerUI8V1Type:
@@ -1059,6 +1071,10 @@ LogicalResult VhloBytecodeInterface::writeType(
         LOG_WRITE_CALL;
         return writer.writeVarInt(vhlo_encoding::kIndexV1Type), success();
       })
+      .Case([&](IntegerSI2V1Type) {
+        LOG_WRITE_CALL;
+        return writer.writeVarInt(vhlo_encoding::kIntegerSI2V1Type), success();
+      })
       .Case([&](IntegerSI4V1Type) {
         LOG_WRITE_CALL;
         return writer.writeVarInt(vhlo_encoding::kIntegerSI4V1Type), success();
@@ -1078,6 +1094,10 @@ LogicalResult VhloBytecodeInterface::writeType(
       .Case([&](IntegerSI64V1Type) {
         LOG_WRITE_CALL;
         return writer.writeVarInt(vhlo_encoding::kIntegerSI64V1Type), success();
+      })
+      .Case([&](IntegerUI2V1Type) {
+        LOG_WRITE_CALL;
+        return writer.writeVarInt(vhlo_encoding::kIntegerUI2V1Type), success();
       })
       .Case([&](IntegerUI4V1Type) {
         LOG_WRITE_CALL;

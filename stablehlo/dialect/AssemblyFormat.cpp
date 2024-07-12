@@ -15,6 +15,7 @@ limitations under the License.
 
 #include "stablehlo/dialect/AssemblyFormat.h"
 
+#include <cassert>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -100,7 +101,7 @@ ParseResult parseSameOperandsAndResultTypeImpl(OpAsmParser& parser,
   if (parser.parseType(type)) return failure();
 
   // Handle if function type, all operand types did not match result type.
-  if (auto fnType = type.dyn_cast<FunctionType>())
+  if (auto fnType = dyn_cast<FunctionType>(type))
     return assignFromFunctionType(parser, loc, operands, result, fnType);
 
   // Handle bare types. ` : type` indicating all input/output types match.
@@ -132,6 +133,51 @@ ParseResult parseVariadicSameOperandsAndResultType(
   return detail::parseSameOperandsAndResultTypeImpl(parser, typePtrs, result);
 }
 
+void printConstantOp(OpAsmPrinter& p, Operation* op, ElementsAttr value) {
+  assert(op->getNumResults() == 1);
+  // If not all types are the same, use generic form.
+  if (value.getType() != op->getResultTypes().front()) {
+    p.printGenericOp(op, /*printOpName=*/false);
+    return;
+  }
+
+  p.printOptionalAttrDict(op->getAttrs(), /*elidedAttrs=*/{"value"});
+  p << ' ';
+  p.printStrippedAttrOrType(value);
+}
+
+ParseResult parseConstantOp(OpAsmParser& parser, OperationState& result) {
+  // Parse the generic form.
+  if (succeeded(parser.parseOptionalLParen())) {
+    if (parser.parseRParen()) return failure();
+    // Parse optional properties
+    if (succeeded(parser.parseOptionalLess()) &&
+        (failed(parser.parseAttribute(result.propertiesAttr)) ||
+         failed(parser.parseGreater())))
+      return failure();
+
+    // Parse optional attributes
+    if (parser.parseOptionalAttrDict(result.attributes)) return failure();
+
+    // Parse type signature
+    if (parser.parseColon() || parser.parseLParen() || parser.parseRParen() ||
+        parser.parseArrow())
+      return failure();
+    Type resultTy;
+    if (parser.parseType(resultTy)) return failure();
+    result.addTypes(resultTy);
+    return success();
+  }
+
+  ElementsAttr valueAttr;
+  if (parser.parseOptionalAttrDict(result.attributes)) return failure();
+  if (parser.parseCustomAttributeWithFallback(valueAttr, Type{}, "value",
+                                              result.attributes))
+    return failure();
+  result.addTypes(valueAttr.getType());
+  return success();
+}
+
 void printTupleOpType(OpAsmPrinter& p, Operation*, TypeRange operands,
                       Type result) {
   p.printType(result);
@@ -143,7 +189,7 @@ ParseResult parseTupleOpType(OpAsmParser& parser,
   llvm::SMLoc loc = parser.getCurrentLocation();
   if (parser.parseType(result)) return failure();
 
-  auto tupType = result.dyn_cast<TupleType>();
+  auto tupType = dyn_cast<TupleType>(result);
   if (!tupType) return parser.emitError(loc, "expected tuple type");
 
   // Assign operand types to tuple types
@@ -210,12 +256,12 @@ ParseResult parseComplexOpType(OpAsmParser& parser, Type& lhs, Type& rhs,
   if (failed(parser.parseType(type))) return failure();
 
   // Handle if function type, all operand types did not match result type.
-  if (auto fnType = type.dyn_cast<FunctionType>())
+  if (auto fnType = dyn_cast<FunctionType>(type))
     return assignFromFunctionType(parser, loc, {&lhs, &rhs}, result, fnType);
 
   // Otherwise, operand type is inferred from complex type
-  auto shapedType = type.dyn_cast<ShapedType>();
-  if (!shapedType || !shapedType.getElementType().isa<ComplexType>())
+  auto shapedType = dyn_cast<ShapedType>(type);
+  if (!shapedType || !isa<ComplexType>(shapedType.getElementType()))
     return parser.emitError(loc, "expected tensor with complex element type");
 
   // Assign LHS and RHS to inferred type
@@ -259,8 +305,7 @@ bool hasSameOperandAndResultTypes(Operation& op) {
 bool isCommutativeNoRegionMatchingDialect(OperationName innerOp,
                                           StringRef reduceOpDialect) {
   auto innerOpDialect = innerOp.getDialect();
-  return innerOpDialect &&
-         innerOpDialect->getNamespace().equals(reduceOpDialect) &&
+  return innerOpDialect && innerOpDialect->getNamespace() == reduceOpDialect &&
          innerOp.hasTrait<mlir::OpTrait::NOperands<2>::Impl>() &&
          innerOp.hasTrait<mlir::OpTrait::OneResult>() &&
          (innerOp.hasTrait<mlir::hlo::OpTrait::IsCommutative>() ||
@@ -302,7 +347,7 @@ static bool isReduceEligibleForCompactPrint(Operation* op, ValueRange inputs,
   LLVM_DEBUG(llvm::dbgs() << "Checking ReduceOp compact print E3\n");
   if (inputs.empty()) return false;
 
-  auto elemType = inputs[0].getType().cast<ShapedType>().getElementType();
+  auto elemType = cast<ShapedType>(inputs[0].getType()).getElementType();
   auto expectedInnerOpType = RankedTensorType::get(/*shape=*/{}, elemType);
   if (innerOp.getOperands()[0].getType() != expectedInnerOpType) return false;
 
@@ -313,7 +358,7 @@ static bool isReduceEligibleForCompactPrint(Operation* op, ValueRange inputs,
   // Check E5.
   LLVM_DEBUG(llvm::dbgs() << "Checking ReduceOp compact print E5\n");
   auto retOp = block.getTerminator();
-  if (!retOp->getName().stripDialect().equals("return")) return false;
+  if (retOp->getName().stripDialect() != "return") return false;
 
   return llvm::equal(innerOp.getResults(), retOp->getOperands());
 }
@@ -567,8 +612,8 @@ ParseResult parseSelectOpType(OpAsmParser& parser, Type& pred, Type& onTrue,
 
   // Error handling for invalid types
   // Fail if not two types, or single functional type
-  bool isValidType = (types.size() == 2 ||
-                      (types.size() == 1 && types[0].isa<FunctionType>()));
+  bool isValidType =
+      (types.size() == 2 || (types.size() == 1 && isa<FunctionType>(types[0])));
   if (!isValidType)
     return parser.emitError(loc,
                             "expected functional type or list of two types");
@@ -581,7 +626,7 @@ ParseResult parseSelectOpType(OpAsmParser& parser, Type& pred, Type& onTrue,
   }
 
   // stablehlo.select %0, %1 : (<op_types> ...) -> <result_type>
-  auto fnType = types[0].cast<FunctionType>();
+  auto fnType = cast<FunctionType>(types[0]);
   return assignFromFunctionType(parser, loc, {&pred, &onTrue, &onFalse}, result,
                                 fnType);
 }

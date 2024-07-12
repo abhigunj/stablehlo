@@ -15,6 +15,7 @@ limitations under the License.
 
 #include <memory>
 
+#include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/ErrorHandling.h"
@@ -69,7 +70,7 @@ llvm::Error evalCustomCallCheckEq(stablehlo::CustomCallOp op,
 
   auto actualResult = scope.findTensors(op->getOperands())[0];
   auto expectedResult = scope.findTensors(op->getOperands())[1];
-  bool isInt = expectedResult.getElementType().isa<IntegerType>();
+  bool isInt = isa<IntegerType>(expectedResult.getElementType());
   auto status =
       isInt ? stablehlo::check::evalExpectEqOp(actualResult, expectedResult)
             : stablehlo::check::evalExpectAlmostEqOp(actualResult,
@@ -142,6 +143,16 @@ class StablehloTranslateInterpreterFallback
                                            "check.expect_eq_const");
     }
 
+    if (auto expectCloseOp = dyn_cast<stablehlo::check::ExpectCloseOp>(op)) {
+      auto runtimeActual = scope.findTensor(expectCloseOp.getActual());
+      auto runtimeExpected = scope.findTensor(expectCloseOp.getExpected());
+      auto status = stablehlo::check::evalExpectCloseOp(
+          runtimeActual, runtimeExpected, expectCloseOp.getMinUlpDifference(),
+          expectCloseOp.getMaxUlpDifference());
+      return stablehlo::wrapFallbackStatus(std::move(status), funcName,
+                                           "check.expect_close");
+    }
+
     if (auto expectSerializedEqOp =
             dyn_cast<stablehlo::check::ExpectSerializedEqOp>(op)) {
       auto runtimeOperand =
@@ -173,17 +184,17 @@ TranslateFromMLIRRegistration interpretRegistration(
       config.fallback = std::make_unique<StablehloTranslateInterpreterFallback>(
           config.probeInstrumentationDir);
 
-      auto resultsOrError = evalModule(module, /*inputs=*/{}, config);
-      if (resultsOrError) {
-        return success(resultsOrError);
-      }
+      llvm::SmallVector<stablehlo::InterpreterValue> inputs;
+      auto results = evalModule(module, inputs, config);
+      if (failed(results)) return failure();
 
-      for (auto &result : *resultsOrError) result.print(os);
+      for (auto &result : *results) result.print(os);
 
       return success();
     },
     [](DialectRegistry &registry) {
       registry.insert<func::FuncDialect>();
+      registry.insert<quant::QuantizationDialect>();
       registry.insert<stablehlo::check::CheckDialect>();
       registry.insert<stablehlo::interpreter::InterpreterDialect>();
       registry.insert<stablehlo::StablehloDialect>();

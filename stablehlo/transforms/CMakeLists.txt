@@ -20,15 +20,27 @@ set(LLVM_TARGET_DEFINITIONS ChloDecompositionPatterns.td)
 mlir_tablegen(ChloDecompositionPatterns.h.inc --gen-rewriters)
 add_public_tablegen_target(ChloDecompositionPatternsIncGen)
 
+set(LLVM_TARGET_DEFINITIONS StablehloLegalizeDeprecatedOpsPatterns.td)
+mlir_tablegen(StablehloLegalizeDeprecatedOpsPatterns.h.inc --gen-rewriters)
+add_public_tablegen_target(StablehloLegalizeDeprecatedOpsPatternsIncGen)
+
+set(LLVM_TARGET_DEFINITIONS VhloToVersionPatterns.td)
+mlir_tablegen(VhloToVersionPatterns.h.inc --gen-rewriters)
+add_public_tablegen_target(VhloToVersionPatterns)
+
 add_mlir_dialect_library(StablehloPasses
   PARTIAL_SOURCES_INTENDED
   ChloLegalizeToStablehlo.cpp
   PassPipelines.cpp
   ShapeLegalizeToStablehlo.cpp
+  StablehloAggressiveFolder.cpp
   StablehloAggressiveSimplification.cpp
   StablehloCanonicalizeDynamism.cpp
+  StablehloConvertToSignless.cpp
   StablehloLegalizeCompositeToCall.cpp
-  StablehloInstrumentWithProbe.cpp
+  StablehloLegalizeDeprecatedOps.cpp
+  StablehloLegalizeQuantToInt.cpp
+  StablehloLegalizeQuantizedOpToQDQ.cpp
   StablehloLegalizeToVhlo.cpp
   StablehloRefineArguments.cpp
   StablehloRefineShapes.cpp
@@ -37,15 +49,18 @@ add_mlir_dialect_library(StablehloPasses
 
   DEPENDS
   ChloDecompositionPatternsIncGen
+  StablehloLegalizeDeprecatedOpsPatternsIncGen
   PassesIncGen
+  VhloToVersionPatterns
 
   LINK_LIBS PUBLIC
   ChloOps
-  InterpreterOps
   MLIRArithDialect
   MLIRAsmParser
   MLIRComplexDialect
+  MLIRDialectUtils
   MLIRFuncDialect
+  MLIRFuncTransforms
   MLIRFunctionInterfaces
   MLIRIR
   MLIRInferTypeOpInterface
@@ -55,6 +70,7 @@ add_mlir_dialect_library(StablehloPasses
   MLIRTransformUtils
   StablehloBase
   StablehloBroadcastUtils
+  StablehloLinalgTransforms
   StablehloOps
   StablehloTypeInference
   VhloOps

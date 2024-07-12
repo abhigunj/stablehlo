@@ -21,9 +21,9 @@ namespace mlir {
 namespace stablehlo {
 
 bool isSupportedUnsignedIntegerType(Type type) {
-  return type.isUnsignedInteger(4) || type.isUnsignedInteger(8) ||
-         type.isUnsignedInteger(16) || type.isUnsignedInteger(32) ||
-         type.isUnsignedInteger(64);
+  return type.isUnsignedInteger(2) || type.isUnsignedInteger(4) ||
+         type.isUnsignedInteger(8) || type.isUnsignedInteger(16) ||
+         type.isUnsignedInteger(32) || type.isUnsignedInteger(64);
 }
 
 bool isSupportedSignedIntegerType(Type type) {
@@ -31,9 +31,9 @@ bool isSupportedSignedIntegerType(Type type) {
   // integers which was added in MHLO for legacy reasons. Going forward,
   // StableHLO will adopt signfull integer semantics with signed and unsigned
   // integer variants.
-  return type.isSignlessInteger(4) || type.isSignlessInteger(8) ||
-         type.isSignlessInteger(16) || type.isSignlessInteger(32) ||
-         type.isSignlessInteger(64);
+  return type.isSignlessInteger(2) || type.isSignlessInteger(4) ||
+         type.isSignlessInteger(8) || type.isSignlessInteger(16) ||
+         type.isSignlessInteger(32) || type.isSignlessInteger(64);
 }
 
 bool isSupportedBooleanType(Type type) { return type.isSignlessInteger(1); }
@@ -51,7 +51,7 @@ bool isSupportedFloatType(Type type) {
 }
 
 bool isSupportedComplexType(Type type) {
-  auto complexTy = type.dyn_cast<ComplexType>();
+  auto complexTy = dyn_cast<ComplexType>(type);
   if (!complexTy) return false;
 
   auto complexElemTy = complexTy.getElementType();
@@ -60,7 +60,7 @@ bool isSupportedComplexType(Type type) {
 
 int64_t numBits(Type type) {
   if (isSupportedComplexType(type))
-    return numBits(type.cast<ComplexType>().getElementType()) * 2;
+    return numBits(cast<ComplexType>(type).getElementType()) * 2;
   return type.getIntOrFloatBitWidth();
 }
 
