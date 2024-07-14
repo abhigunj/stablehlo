@@ -178,6 +178,32 @@ func.func @attr_dict() attributes {stablehlo.attr = {attr1 = 1 : i32, attr2 = 2 
   return
 }
 
+// CHECK-LABEL: "attr_custom_call_api_version_typed_ffi"
+// CHECK-NEXT: (%[[ARG0:.*]]: {{.*}})
+// CHECK: api_version = #vhlo<api_version_v1 API_VERSION_TYPED_FFI>
+// CHECK-SAME: backend_config = #vhlo.dict_v1<{#vhlo.string_v1<"bar"> = #vhlo.integer_v1<42 : i32>}>
+func.func @attr_custom_call_api_version_typed_ffi(%arg0: tensor<f32>) -> tensor<f32> {
+  %0 = "stablehlo.custom_call"(%arg0) {
+    call_target_name = "foo",
+    backend_config= {bar = 42 : i32},
+    api_version = 4 : i32
+  } : (tensor<f32>) -> tensor<f32>
+  func.return %0 : tensor<f32>
+}
+
+
+// CHECK-LABEL: "attr_custom_call_api_version_typed_ffi_no_backend_config"
+// CHECK-NEXT: (%[[ARG0:.*]]: {{.*}})
+// CHECK: api_version = #vhlo<api_version_v1 API_VERSION_TYPED_FFI>
+// CHECK-SAME: backend_config = #vhlo.dict_v1<{}>
+func.func @attr_custom_call_api_version_typed_ffi_no_backend_config(%arg0: tensor<f32>) -> tensor<f32> {
+  %0 = "stablehlo.custom_call"(%arg0) {
+    call_target_name = "foo",
+    api_version = 4 : i32
+  } : (tensor<f32>) -> tensor<f32>
+  func.return %0 : tensor<f32>
+}
+
 // DotDimensionNumbers aka #stablehlo.dot is covered below.
 
 // CHECK-LABEL: "attr_fft_type_fft"
@@ -1299,7 +1325,6 @@ func.func public @op_custom_call_empty_result_layout(%arg0: tensor<i64>) -> tens
   // CHECK-SAME: }> : (!vhlo.tensor_v1<!vhlo.i64_v1>) -> !vhlo.tuple_v1<>
   %0 = "stablehlo.custom_call"(%arg0) <{
     api_version = 2 : i32,
-    backend_config = "",
     call_target_name = "empty_output",
     has_side_effect = true,
     operand_layouts = [dense<> : tensor<0xindex>],
@@ -2525,6 +2550,14 @@ func.func @type_i1(%arg0: tensor<i1>, %arg1: tensor<i1>) -> tensor<i1> {
   func.return %0 : tensor<i1>
 }
 
+// CHECK-LABEL: "type_i2"
+// CHECK-NEXT: (%[[ARG0:.*]]: {{.*}}, %[[ARG1:.*]]: {{.*}})
+func.func @type_i2(%arg0: tensor<i2>, %arg1: tensor<i2>) -> tensor<i2> {
+  // CHECK: "vhlo.add_v1"(%[[ARG0]], %[[ARG1]]) : (!vhlo.tensor_v1<!vhlo.i2_v1>, !vhlo.tensor_v1<!vhlo.i2_v1>) -> !vhlo.tensor_v1<!vhlo.i2_v1>
+  %0 = "stablehlo.add"(%arg0, %arg1) : (tensor<i2>, tensor<i2>) -> tensor<i2>
+  func.return %0 : tensor<i2>
+}
+
 // CHECK-LABEL: "type_i4"
 // CHECK-NEXT: (%[[ARG0:.*]]: {{.*}}, %[[ARG1:.*]]: {{.*}})
 func.func @type_i4(%arg0: tensor<i4>, %arg1: tensor<i4>) -> tensor<i4> {
@@ -2563,6 +2596,14 @@ func.func @type_i64(%arg0: tensor<i64>, %arg1: tensor<i64>) -> tensor<i64> {
   // CHECK: "vhlo.add_v1"(%[[ARG0]], %[[ARG1]]) : (!vhlo.tensor_v1<!vhlo.i64_v1>, !vhlo.tensor_v1<!vhlo.i64_v1>) -> !vhlo.tensor_v1<!vhlo.i64_v1>
   %0 = "stablehlo.add"(%arg0, %arg1) : (tensor<i64>, tensor<i64>) -> tensor<i64>
   func.return %0 : tensor<i64>
+}
+
+// CHECK-LABEL: "type_ui2"
+// CHECK-NEXT: (%[[ARG0:.*]]: {{.*}}, %[[ARG1:.*]]: {{.*}})
+func.func @type_ui2(%arg0: tensor<ui2>, %arg1: tensor<ui2>) -> tensor<ui2> {
+  // CHECK: "vhlo.add_v1"(%[[ARG0]], %[[ARG1]]) : (!vhlo.tensor_v1<!vhlo.ui2_v1>, !vhlo.tensor_v1<!vhlo.ui2_v1>) -> !vhlo.tensor_v1<!vhlo.ui2_v1>
+  %0 = "stablehlo.add"(%arg0, %arg1) : (tensor<ui2>, tensor<ui2>) -> tensor<ui2>
+  func.return %0 : tensor<ui2>
 }
 
 // CHECK-LABEL: "type_ui4"

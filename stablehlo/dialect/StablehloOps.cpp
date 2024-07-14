@@ -478,6 +478,20 @@ LogicalResult CustomCallOp::verify() {
              << "operand part has type " << operandPart
              << " and output part has type " << outputPart;
   }
+  if (auto backendConfig = getBackendConfig()) {
+    if (getApiVersion() == CustomCallApiVersion::API_VERSION_TYPED_FFI) {
+      if (!isa<mlir::DictionaryAttr>(*backendConfig))
+        return emitOpError() << "backend_config for api_version "
+                             << stringifyCustomCallApiVersion(getApiVersion())
+                             << " must be a dictionary attribute.";
+    } else {
+      if (!isa<mlir::StringAttr>(*backendConfig))
+        return emitOpError() << "backend_config for api_version "
+                             << stringifyCustomCallApiVersion(getApiVersion())
+                             << " must be a string attribute.";
+    }
+  }
+
   return success();
 }
 
@@ -492,6 +506,27 @@ void CustomCallOp::getEffects(
   effects.emplace_back(MemoryEffects::Free::get());
   effects.emplace_back(MemoryEffects::Write::get());
   effects.emplace_back(MemoryEffects::Read::get());
+}
+
+mlir::Attribute CustomCallOp::getBackendConfigOrDefault() {
+  auto backendConfig = getBackendConfig();
+  if (backendConfig.has_value()) return backendConfig.value();
+
+  if (getApiVersion() ==
+      mlir::stablehlo::CustomCallApiVersion::API_VERSION_TYPED_FFI)
+    return DictionaryAttr::get(getContext());
+
+  return StringAttr::get(getContext(), "");
+}
+
+// Returns if the backend config is unset, or if empty dict / string attribute.
+bool CustomCallOp::hasEmptyBackendConfig() {
+  if (!getBackendConfig().has_value()) return true;
+  Attribute backendConfig = getBackendConfigOrDefault();
+  if (auto strAttr = dyn_cast<StringAttr>(backendConfig)) {
+    return strAttr.empty();
+  }
+  return cast<DictionaryAttr>(backendConfig).empty();
 }
 
 //===----------------------------------------------------------------------===//
@@ -1839,15 +1874,6 @@ void ReduceWindowOp::build(
 }
 
 //===----------------------------------------------------------------------===//
-// ReducePrecisionOp
-//===----------------------------------------------------------------------===//
-
-LogicalResult ReducePrecisionOp::verify() {
-  return hlo::verifyReducePrecisionOp(getLoc(), getExponentBits(),
-                                      getMantissaBits());
-}
-
-//===----------------------------------------------------------------------===//
 // ReduceOp
 //===----------------------------------------------------------------------===//
 
@@ -2591,7 +2617,6 @@ LogicalResult UniformQuantizeOp::verify() {
 
 using mlir::hlo::parseComplexOpType;
 using mlir::hlo::parseCustomCallTarget;
-using mlir::hlo::parseDenseI64Array;
 using mlir::hlo::parseDotDimensionNumbers;
 using mlir::hlo::parseExponentMantissa;
 using mlir::hlo::parsePairwiseOpType;
@@ -2603,7 +2628,6 @@ using mlir::hlo::parseVariadicOperandWithAttribute;
 using mlir::hlo::parseVariadicSameOperandsAndResultType;
 using mlir::hlo::printComplexOpType;
 using mlir::hlo::printCustomCallTarget;
-using mlir::hlo::printDenseI64Array;
 using mlir::hlo::printDotDimensionNumbers;
 using mlir::hlo::printExponentMantissa;
 using mlir::hlo::printPairwiseOpType;
@@ -3292,11 +3316,11 @@ void printWindowPadding(OpAsmPrinter& p, DenseElementsAttr padding) {
 }  // namespace
 
 void printWindowAttributes(OpAsmPrinter& p, Operation* /*op*/,
-                           std::optional<Attribute> windowStrides,
+                           std::optional<DenseI64ArrayAttr> windowStrides,
                            std::optional<DenseIntElementsAttr> padding,
-                           std::optional<Attribute> lhsDilation,
-                           std::optional<Attribute> rhsDilation,
-                           std::optional<Attribute> windowReversal) {
+                           std::optional<DenseI64ArrayAttr> lhsDilation,
+                           std::optional<DenseI64ArrayAttr> rhsDilation,
+                           std::optional<DenseBoolArrayAttr> windowReversal) {
   using pair_t = std::pair<Attribute, StringRef>;
   std::array<pair_t, 5> printedAttributes = {{
       {windowStrides ? *windowStrides : nullptr, "stride"},
@@ -3328,20 +3352,12 @@ void printWindowAttributes(OpAsmPrinter& p, Operation* /*op*/,
   });
 }
 
-void printWindowAttributes(OpAsmPrinter& p, Operation* /*op*/,
-                           std::optional<Attribute> windowStrides,
-                           std::optional<Attribute> lhsDilation,
-                           std::optional<Attribute> rhsDilation,
-                           std::optional<Attribute> windowReversal) {
-  printWindowAttributes(p, nullptr, windowStrides, /*padding=*/{}, lhsDilation,
-                        rhsDilation, windowReversal);
-}
-
-ParseResult parseWindowAttributes(OpAsmParser& parser, Attribute& windowStrides,
+ParseResult parseWindowAttributes(OpAsmParser& parser,
+                                  DenseI64ArrayAttr& windowStrides,
                                   DenseIntElementsAttr& padding,
-                                  Attribute& lhsDilation,
-                                  Attribute& rhsDilation,
-                                  Attribute& windowReversal) {
+                                  DenseI64ArrayAttr& lhsDilation,
+                                  DenseI64ArrayAttr& rhsDilation,
+                                  DenseBoolArrayAttr& windowReversal) {
   StringRef attributeName;
 
   llvm::StringSet<> allowedAttributeNames{
@@ -3418,15 +3434,6 @@ ParseResult parseWindowAttributes(OpAsmParser& parser, Attribute& windowStrides,
     if (parser.parseOptionalComma().failed()) break;
   }
   return success();
-}
-
-ParseResult parseWindowAttributes(OpAsmParser& parser, Attribute& windowStrides,
-                                  Attribute& lhsDilation,
-                                  Attribute& rhsDilation,
-                                  Attribute& windowReversal) {
-  auto padding = parser.getBuilder().getI64TensorAttr({});
-  return parseWindowAttributes(parser, windowStrides, padding, lhsDilation,
-                               rhsDilation, windowReversal);
 }
 
 //===----------------------------------------------------------------------===//
