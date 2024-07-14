@@ -1190,25 +1190,27 @@ LogicalResult AllGatherOp::verify() {
   if (auto channelHandleAttr = getChannelHandleAttr())
     channelId = channelHandleAttr.getHandle();
 
-  return hlo::verifyAllGatherOp(getLoc(), getOperand(), getAllGatherDim(),
+  return hlo::verifyAllGatherOp(getLoc(), getOperands(), getAllGatherDim(),
                                 getReplicaGroups(), channelId,
-                                getUseGlobalDeviceIds(), getResult());
+                                getUseGlobalDeviceIds(), getResults());
 }
 
 mlir::Speculation::Speculatability AllGatherOp::getSpeculatability() {
-  auto inputType = getOperand().getType();
-  auto resultType = getResult().getType();
-  auto allGatherDim = getAllGatherDim();
-  // The actual size of the `allGatherDim` depends on the number of processes,
-  // which is only known at runtime. If it is dynamic, there is no expectation,
-  // so there cannot be a mismatch. If it is static, the actual number may
-  // differ at runtime, leading to UB. See all_gather_c6 in the spec.
-  if (!resultType.isDynamicDim(allGatherDim))
-    return mlir::Speculation::NotSpeculatable;
-  for (size_t i : llvm::seq(resultType.getRank())) {
-    if (i != allGatherDim && !resultType.isDynamicDim(i) &&
-        inputType.isDynamicDim(i))
+  for(auto [operand, result] : llvm::zip(getOperands(), getResults())){
+    auto inputType = cast<ShapedType>(operand.getType());
+    auto resultType = cast<ShapedType>(result.getType());
+    auto allGatherDim = getAllGatherDim();
+    // The actual size of the `allGatherDim` depends on the number of processes,
+    // which is only known at runtime. If it is dynamic, there is no expectation,
+    // so there cannot be a mismatch. If it is static, the actual number may
+    // differ at runtime, leading to UB. See all_gather_c6 in the spec.
+    if (!resultType.isDynamicDim(allGatherDim))
       return mlir::Speculation::NotSpeculatable;
+    for (size_t i : llvm::seq(resultType.getRank())) {
+      if (i != allGatherDim && !resultType.isDynamicDim(i) &&
+          inputType.isDynamicDim(i))
+        return mlir::Speculation::NotSpeculatable;
+    }
   }
   return mlir::Speculation::Speculatable;
 }

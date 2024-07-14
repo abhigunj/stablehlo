@@ -250,24 +250,29 @@ namespace {
 // StableHLO-specific extension to refine return types based on potentially
 // refined operands.
 
+// how to handle ?
 struct RefineAllGatherOpPattern : public OpRewritePattern<AllGatherOp> {
   using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(AllGatherOp op,
                                 PatternRewriter& rewriter) const override {
-    auto operandType = op.getOperand().getType();
+    LogicalResult returnStatus = success();
+    for (auto operand : op->getOperands()) {
+      auto operandType = cast<ShapedType>(operand.getType());
 
-    // This represents the cross_replica_and_partition process grouping strategy
-    // that requires num_partitions to compute shardCount. Since we don't know
-    // num_partitions at this point, we error out.
-    if (op.getChannelHandle() && !op.getUseGlobalDeviceIds())
-      return rewriter.notifyMatchFailure(op, "unsupported strategy");
-    DenseIntElementsAttr replicaGroups = op.getReplicaGroups();
-    auto shardCount = replicaGroups.getType().getDimSize(1);
-
-    SmallVector<int64_t> refinement(operandType.getShape());
-    if (!operandType.isDynamicDim(op.getAllGatherDim()))
-      refinement[op.getAllGatherDim()] *= shardCount;
-    return refineReturnShape(rewriter, op, refinement);
+      // This represents the cross_replica_and_partition process grouping
+      // strategy that requires num_partitions to compute shardCount. Since we
+      // don't know num_partitions at this point, we error out.
+      if (op.getChannelHandle() && !op.getUseGlobalDeviceIds())
+        return rewriter.notifyMatchFailure(op, "unsupported strategy");
+      DenseIntElementsAttr replicaGroups = op.getReplicaGroups();
+      auto shardCount = replicaGroups.getType().getDimSize(1);
+      SmallVector<int64_t> refinement(operandType.getShape());
+      if (!operandType.isDynamicDim(op.getAllGatherDim()))
+        refinement[op.getAllGatherDim()] *= shardCount;
+      returnStatus = refineReturnShape(rewriter, op, refinement);
+      if (returnStatus.failed()) return returnStatus;
+    }
+    return returnStatus;
   }
 };
 

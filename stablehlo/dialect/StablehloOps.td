@@ -1325,7 +1325,8 @@ def StableHLO_WhileOp: StableHLO_Op<"while", [
 }
 
 def StableHLO_AllGatherOp : StableHLO_Op<"all_gather",
-    [ConditionallySpeculatable, SameOperandsAndResultElementType] /*all_gather_c6*/> {
+    [ConditionallySpeculatable, SameOperandsAndResultElementType /*all_gather_c6*/,
+     SingleBlockImplicitTerminator<"ReturnOp">]> {
   string summary = "AllGather operation";
   string description = [{
     Within each process group in the process grid, concatenates the values of the
@@ -1346,13 +1347,13 @@ def StableHLO_AllGatherOp : StableHLO_Op<"all_gather",
   }];
 
   let arguments = (ins
-    HLO_Tensor:$operand, /*all_gather_i1*/
+    Variadic<HLO_Tensor>:$operands, /*all_gather_i1*/
     ConfinedAttr<I64Attr, [IntNonNegative]>:$all_gather_dim, /*all_gather_c1, all_gather_i2*/
     I64ElementsAttr:$replica_groups, /*all_gather_i3*/
     OptionalAttr<StableHLO_ChannelHandle>:$channel_handle, /*all_gather_i4*/
     UnitAttr:$use_global_device_ids /*all_gather_i5*/
   );
-  let results = (outs HLO_Tensor);
+  let results = (outs Variadic<HLO_Tensor>);
   let hasVerifier = 1;
 
   let extraClassDeclaration = commonClassDeclaration # [{

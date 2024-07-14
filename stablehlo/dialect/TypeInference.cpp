@@ -3523,67 +3523,69 @@ LogicalResult inferWhileOp(std::optional<Location>, ValueRange operand,
 // Verifiers for ops.
 //===----------------------------------------------------------------------===//
 
-LogicalResult verifyAllGatherOp(std::optional<Location> location, Value operand,
+LogicalResult verifyAllGatherOp(std::optional<Location> location, ValueRange operands,
                                 int64_t allGatherDim,
                                 DenseIntElementsAttr replicaGroups,
                                 int64_t channelId, bool useGlobalDeviceIds,
-                                Value result) {
-  auto operandType = cast<RankedTensorType>(operand.getType());
-  auto resultType = cast<RankedTensorType>(result.getType());
+                                ValueRange results) {
+  for(auto [operand, result] : llvm::zip(operands, results)){
+  
+    auto operandType = cast<RankedTensorType>(operand.getType());
+    auto resultType = cast<RankedTensorType>(result.getType());
 
-  // all_gather_c1
-  if (allGatherDim >= operandType.getRank())
-    return emitOptionalError(location,
-                             "all_gather_dim must be a valid index of operand");
+    // all_gather_c1
+    if (allGatherDim >= operandType.getRank())
+      return emitOptionalError(location,
+                              "all_gather_dim must be a valid index of operand");
 
-  // TODO(#1745): Sync verification of AllGather with HLO.
-  if (operandType.getDimSize(allGatherDim) == 0)
-    return emitOptionalError(
-        location,
-        "dimension size of operand at 'all_gather_dim' cannot be zero");
-
-  // all_gather_i3, all_gather_c2, all_gather_c4
-  if (failed(verifyReplicaGroups(location, replicaGroups,
-                                 /*allGroupsMustHaveSameSize=*/true,
-                                 useGlobalDeviceIds,
-                                 /*expectedGroupSize=*/std::nullopt)))
-    return failure();
-
-  // all_gather_c5
-  if (useGlobalDeviceIds && channelId < 0)
-    return emitOptionalError(
-        location,
-        "channel_id cannot be negative when useGlobalDeviceIds is set");
-
-  // all_gather_c6
-  if (resultType.getRank() != operandType.getRank())
-    return emitOptionalError(location,
-                             "operand and result must have the same rank");
-
-  for (int64_t i = 0; i < operandType.getRank(); i++) {
-    if (i == allGatherDim) continue;
-    // all_gather_c6
-    if (!verifyCompatibleDims(resultType.getDimSize(i),
-                              operandType.getDimSize(i)))
+    // TODO(#1745): Sync verification of AllGather with HLO.
+    if (operandType.getDimSize(allGatherDim) == 0)
       return emitOptionalError(
           location,
-          "operand and result should have the same shape except for the "
-          "dimension size at 'all_gather_dim'");
+          "dimension size of operand at 'all_gather_dim' cannot be zero");
+
+    // all_gather_i3, all_gather_c2, all_gather_c4
+    if (failed(verifyReplicaGroups(location, replicaGroups,
+                                  /*allGroupsMustHaveSameSize=*/true,
+                                  useGlobalDeviceIds,
+                                  /*expectedGroupSize=*/std::nullopt)))
+      return failure();
+
+    // all_gather_c5
+    if (useGlobalDeviceIds && channelId < 0)
+      return emitOptionalError(
+          location,
+          "channel_id cannot be negative when useGlobalDeviceIds is set");
+
+    // all_gather_c6
+    if (resultType.getRank() != operandType.getRank())
+      return emitOptionalError(location,
+                              "operand and result must have the same rank");
+
+    for (int64_t i = 0; i < operandType.getRank(); i++) {
+      if (i == allGatherDim) continue;
+      // all_gather_c6
+      if (!verifyCompatibleDims(resultType.getDimSize(i),
+                                operandType.getDimSize(i)))
+        return emitOptionalError(
+            location,
+            "operand and result should have the same shape except for the "
+            "dimension size at 'all_gather_dim'");
+    }
+
+    if (operandType.isDynamicDim(allGatherDim) ||
+        resultType.isDynamicDim(allGatherDim))
+      return success();
+
+    // all_gather_c6
+    if ((resultType.getDimSize(allGatherDim) %
+        operandType.getDimSize(allGatherDim)) != 0)
+      return emitOptionalError(
+          location, "result gather dimension has size ",
+          resultType.getDimSize(allGatherDim),
+          ", expected to be a multiple of operand gather dimension size ",
+          operandType.getDimSize(allGatherDim));
   }
-
-  if (operandType.isDynamicDim(allGatherDim) ||
-      resultType.isDynamicDim(allGatherDim))
-    return success();
-
-  // all_gather_c6
-  if ((resultType.getDimSize(allGatherDim) %
-       operandType.getDimSize(allGatherDim)) != 0)
-    return emitOptionalError(
-        location, "result gather dimension has size ",
-        resultType.getDimSize(allGatherDim),
-        ", expected to be a multiple of operand gather dimension size ",
-        operandType.getDimSize(allGatherDim));
-
   return success();
 }
 
