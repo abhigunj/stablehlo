@@ -38,11 +38,11 @@ Tensor allGatherOp(const Tensor &operand, int64_t allGatherDim,
                    SmallVector<SmallVector<uint32_t>> replicaGroups,
                    ChannelId channelId, bool useGlobalDeviceIds,
                    Process *process, ShapedType resultType);
-Tensor allReduceOp(const Tensor &operand,
+SmallVector<InterpreterValue> allReduceOp(SmallVector<Tensor> operands,
                    SmallVector<SmallVector<uint32_t>> replicaGroups,
                    ChannelId channelId, bool useGlobalDeviceIds,
                    Region &computation, Process *process, Scope &scope,
-                   ShapedType resultType);
+                   ArrayRef<ShapedType> resultTypes);
 Tensor allToAllOp(const Tensor &operand, Axis splitDimension,
                   Axis concatDimension, int64_t splitCount,
                   SmallVector<SmallVector<uint32_t>> replicaGroups,

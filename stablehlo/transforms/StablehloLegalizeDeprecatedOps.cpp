@@ -16,6 +16,7 @@ limitations under the License.
 #include <cassert>
 #include <cstdint>
 
+#include "llvm/ADT/SmallVector.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinTypes.h"
@@ -72,28 +73,8 @@ struct StablehloLegalizeDeprecatedOpsPass final
 // Patterns
 ///////////
 
-struct CrossReplicaSumToAllReducePattern
-    : public OpRewritePattern<CrossReplicaSumOp> {
-  using OpRewritePattern<CrossReplicaSumOp>::OpRewritePattern;
-  LogicalResult matchAndRewrite(CrossReplicaSumOp crossReplicaSumOp,
-                                PatternRewriter &rewriter) const override {
-    auto allReduceOp = rewriter.replaceOpWithNewOp<AllReduceOp>(
-        crossReplicaSumOp, crossReplicaSumOp.getType(),
-        crossReplicaSumOp.getOperand(), crossReplicaSumOp.getReplicaGroups(),
-        /*channel_handle=*/ChannelHandleAttr(),
-        /*use_global_device_ids=*/false);
 
-    auto *block = rewriter.createBlock(&allReduceOp.getComputation());
-    auto elementType =
-        RankedTensorType::get({}, allReduceOp.getType().getElementType());
-    auto location = allReduceOp.getComputation().getLoc();
-    block->addArguments({elementType, elementType}, {location, location});
-    auto addOp = rewriter.create<AddOp>(location, block->getArgument(0),
-                                        block->getArgument(1));
-    rewriter.create<ReturnOp>(location, addOp.getResult());
-    return success();
-  }
-};
+
 
 ///////////////////////
 // DRR helper functions
@@ -128,7 +109,6 @@ DenseElementsAttr getScalarOfType(Type ty, int64_t rawValue) {
 void populateStablehloLegalizeDeprecatedOpsPatterns(
     MLIRContext *context, RewritePatternSet *patterns) {
   populateWithGenerated(*patterns);
-  patterns->add<CrossReplicaSumToAllReducePattern>(context);
 }
 
 }  // namespace stablehlo

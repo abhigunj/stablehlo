@@ -59,6 +59,7 @@ limitations under the License.
 #include "mlir/IR/TypeUtilities.h"
 #include "mlir/IR/Types.h"
 #include "mlir/IR/Value.h"
+#include "mlir/IR/ValueRange.h"
 #include "mlir/Interfaces/InferTypeOpInterface.h"
 #include "mlir/Support/LLVM.h"
 #include "mlir/Support/LogicalResult.h"
@@ -3587,7 +3588,7 @@ LogicalResult verifyAllGatherOp(std::optional<Location> location, Value operand,
   return success();
 }
 
-LogicalResult verifyAllReduceOp(std::optional<Location> location, Value operand,
+LogicalResult verifyAllReduceOp(std::optional<Location> location, ValueRange operands,
                                 DenseIntElementsAttr replicaGroups,
                                 int64_t channelId, bool useGlobalDeviceIds,
                                 Region& computation) {
@@ -3606,14 +3607,15 @@ LogicalResult verifyAllReduceOp(std::optional<Location> location, Value operand,
         "channel_id must be positive when useGlobalDeviceIds is set but got: ",
         channelId);
 
-  auto operandType = cast<ShapedType>(operand.getType());
-  // all_reduce_c5
-  if (failed(verifyReducerShape(
-          location, computation.front(), {operandType},
-          {RankedTensorType::get({}, operandType.getElementType())},
-          /*allowedDimensions=*/{})))
-    return failure();
-
+  for (auto operand : operands){
+    auto operandType = cast<ShapedType>(operand.getType());
+    // all_reduce_c5
+    if (failed(verifyReducerShape(
+            location, computation.front(), {operandType},
+            {RankedTensorType::get({}, operandType.getElementType())},
+            /*allowedDimensions=*/{})))
+      return failure();
+  }
   return success();
 }
 

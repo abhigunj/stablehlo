@@ -25,6 +25,7 @@ limitations under the License.
 #include "mlir/IR/Location.h"
 #include "mlir/IR/SymbolTable.h"
 #include "mlir/IR/Types.h"
+#include "mlir/IR/ValueRange.h"
 #include "mlir/Interfaces/InferTypeOpInterface.h"
 #include "mlir/Support/LogicalResult.h"
 #include "stablehlo/dialect/Base.h"
@@ -406,7 +407,7 @@ LogicalResult verifyAllGatherOp(std::optional<Location> location, Value operand,
                                 int64_t channelId, bool useGlobalDeviceIds,
                                 Value result);
 
-LogicalResult verifyAllReduceOp(std::optional<Location> location, Value operand,
+LogicalResult verifyAllReduceOp(std::optional<Location> location, ValueRange operand,
                                 DenseIntElementsAttr replicaGroups,
                                 int64_t channelId, bool useGlobalDeviceIds,
                                 Region& computation);

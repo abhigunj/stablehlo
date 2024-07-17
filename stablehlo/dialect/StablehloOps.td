@@ -1362,7 +1362,8 @@ def StableHLO_AllGatherOp : StableHLO_Op<"all_gather",
 }
 
 def StableHLO_AllReduceOp : StableHLO_Op<"all_reduce",
-    [HLO_SpeculatableIfStaticDimInOutputIsStaticInInput,
+    [HLO_SpeculatableIfStaticDimInOutputIsStaticInInput, /*SameOperandsAndResultElementType,*/
+    SingleBlockImplicitTerminator<"ReturnOp">,
      InferTensorType /*all_reduce_c6, all_reduce_c7*/]> {
   let summary = "AllReduce operation";
   let description = [{
@@ -1388,13 +1389,13 @@ def StableHLO_AllReduceOp : StableHLO_Op<"all_reduce",
   }];
 
   let arguments = (ins
-    HLO_Tensor:$operand, /*all_reduce_i1*/
+    Variadic<HLO_Tensor>:$operands, /*all_reduce_i1*/
     I64ElementsAttr:$replica_groups, /*all_reduce_i2*/
     OptionalAttr<StableHLO_ChannelHandle>:$channel_handle, /*all_reduce_i3*/
     UnitAttr:$use_global_device_ids /*all_reduce_i4*/
   );
   let regions = (region SizedRegion<1>:$computation /*all_reduce_i5*/);
-  let results = (outs HLO_Tensor);
+  let results = (outs Variadic<HLO_Tensor>);
   let hasVerifier = 1;
 }
 

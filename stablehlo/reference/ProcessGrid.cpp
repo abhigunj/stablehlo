@@ -20,6 +20,7 @@ limitations under the License.
 #include <optional>
 #include <utility>
 
+#include "llvm/Support/raw_ostream.h"
 #include "stablehlo/reference/Tensor.h"
 
 namespace mlir {
@@ -62,6 +63,9 @@ std::optional<ProcessGroup> ProcessGroups::findGroup(ProcessId processId) {
 RendezvousResult::RendezvousResult(std::map<ProcessId, Tensor> const &result)
     : result_(result) {}
 
+RendezvousResult::RendezvousResult(std::map<ProcessId, SmallVector<Tensor>> const &results)
+    : newresult_(results){}
+
 void RendezvousResult::insert(ProcessId processId, Tensor tensor) {
   result_[processId] = tensor;
 }
@@ -75,6 +79,15 @@ Tensor RendezvousResult::lookup(ProcessId processId) const {
 SmallVector<Tensor> RendezvousResult::getSortedTensors() const {
   return llvm::map_to_vector(result_,
                              [](const auto &pair) { return pair.second; });
+}
+
+SmallVector<SmallVector<Tensor>> RendezvousResult::newgetSortedTensors() const {
+  SmallVector<SmallVector<Tensor>> retVector;
+  for (auto it : newresult_){
+    llvm::errs() << "Abhi:map to vector:" << "\n";
+    retVector.push_back(it.second);
+  }
+  return retVector;
 }
 
 //===----------------------------------------------------------------------===//
@@ -248,6 +261,38 @@ RendezvousResult ProcessGrid::rendezvous(ProcessGroup processGroup,
 
   state.useCount--;
 
+  return state.useCount > 0 ? state.result : std::move(state.result);
+}
+
+RendezvousResult ProcessGrid::newrendezvous(ProcessGroup processGroup,
+                                         ChannelId channelId,
+                                         ProcessId processId,
+                                         SmallVector<Tensor> operands) {
+  // Process wait/notify logic below doesn't work for single process.
+  if (processGroup.size() == 1)
+    return RendezvousResult({std::pair{processId, operands}});
+
+  std::pair<ProcessGroup, ChannelId> channelKey(processGroup, channelId);
+  auto &state = channels_[channelKey];
+
+  std::unique_lock<std::mutex> lock(state.mutex);
+  state.newvalues[processId] = operands;
+  llvm::errs() << "Abhi:inserted own operands:" << "\n";
+  state.useCount++;
+
+  // After each process contributes, wait for the last process to notify.
+  if (state.newvalues.size() < processGroup.size()) {
+    if (!channelConditions_[channelKey].wait_for(
+            lock, std::chrono::seconds(3),
+            [&] { return state.newvalues.size() == processGroup.size(); }))
+      llvm::report_fatal_error("rendezvous timed out");
+  } else {
+    state.result = std::move(state.newvalues);
+    channelConditions_[channelKey].notify_all();
+  }
+
+  state.useCount--;
+  llvm::errs() << "Abhi:newvalues.size():" << state.newvalues.size() << "\n";
   return state.useCount > 0 ? state.result : std::move(state.result);
 }
 

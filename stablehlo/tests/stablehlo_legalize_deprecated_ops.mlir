@@ -38,16 +38,6 @@ func.func @op_create_token() -> !stablehlo.token {
 
 // -----
 
-// CHECK-LABEL: op_cross_replica_sum
-func.func @op_cross_replica_sum(%arg0: tensor<f32>) -> tensor<f32> {
-  // CHECK{LITERAL}: "stablehlo.all_reduce"(%arg0) <{replica_groups = dense<[[0], [1]]> : tensor<2x1xi64>}>
-  // CHECK:   stablehlo.add %arg1, %arg2 : tensor<f32>
-  %0 = "stablehlo.cross-replica-sum"(%arg0) {replica_groups = dense<[[0], [1]]> : tensor<2x1xi64>} : (tensor<f32>) -> tensor<f32>
-  func.return %0 : tensor<f32>
-}
-
-// -----
-
 // CHECK-LABEL: op_einsum
 func.func @op_einsum(%arg0: tensor<3x4x5xf32>, %arg1: tensor<3x5x6xf32>) -> tensor<3x4x6xf32> {
   // TODO CHECK

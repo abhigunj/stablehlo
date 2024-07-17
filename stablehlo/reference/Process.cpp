@@ -56,6 +56,12 @@ RendezvousResult Process::rendezvous(ProcessGroup processGroup,
   return grid_->rendezvous(processGroup, channelId, getId(), operand);
 }
 
+RendezvousResult Process::newrendezvous(ProcessGroup processGroup,
+                                     ChannelId channelId,
+                                     const SmallVector<Tensor> operands) {
+  return grid_->newrendezvous(processGroup, channelId, getId(), operands);
+}
+
 void Process::send(ArrayRef<Tensor> inputs, ChannelId channelId) {
   grid_->send(inputs, channelId, getId());
 }

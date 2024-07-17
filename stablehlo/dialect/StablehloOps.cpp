@@ -1212,7 +1212,7 @@ LogicalResult AllReduceOp::verify() {
   if (auto channelHandleAttr = getChannelHandleAttr())
     channelId = channelHandleAttr.getHandle();
 
-  return hlo::verifyAllReduceOp(getLoc(), getOperand(), getReplicaGroups(),
+  return hlo::verifyAllReduceOp(getLoc(), getOperands(), getReplicaGroups(),
                                 channelId, getUseGlobalDeviceIds(),
                                 getComputation());
 }
@@ -1222,7 +1222,7 @@ LogicalResult AllReduceOp::inferReturnTypeComponents(
     DictionaryAttr attributes, OpaqueProperties properties, RegionRange regions,
     SmallVectorImpl<ShapedTypeComponents>& inferredReturnShapes) {
   AllReduceOp::Adaptor adaptor(operands, attributes, properties, regions);
-  return hlo::inferAllReduceOp(location, adaptor.getOperand(),
+  return hlo::inferAllReduceOp(location, adaptor.getOperands(),
                                adaptor.getComputation(), inferredReturnShapes);
 }
 

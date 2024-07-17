@@ -26,6 +26,7 @@ limitations under the License.
 #include <set>
 #include <utility>
 
+#include "llvm/ADT/SmallVector.h"
 #include "mlir/Support/LLVM.h"
 #include "stablehlo/reference/Tensor.h"
 
@@ -42,11 +43,13 @@ class RendezvousResult {
  public:
   RendezvousResult() = default;
   RendezvousResult(std::map<ProcessId, Tensor> const &result);
+  RendezvousResult(std::map<ProcessId, SmallVector<Tensor>> const &result);
 
   /// Iterates through the (ProcessId, Tensor) map entires and returns a vector
   /// of Tensors sorted by ProcessId--(replicaId, partitionId) pair--in
   /// lexicographical order.
   SmallVector<Tensor> getSortedTensors() const;
+  SmallVector<SmallVector<Tensor>> newgetSortedTensors() const;
 
   /// Inserts `tensor` into the map using the key `processId`.
   void insert(ProcessId processId, Tensor tensor);
@@ -58,6 +61,7 @@ class RendezvousResult {
  private:
   /// Internal map representation of the result of `ProcessGrid::rendezvous`.
   std::map<ProcessId, Tensor> result_;
+  std::map<ProcessId, SmallVector<Tensor>> newresult_;
 };
 
 namespace detail {
@@ -73,6 +77,7 @@ struct RendezvousState {
 
   /// Internal storage used to store data contributed by the processes.
   std::map<ProcessId, Tensor> values;
+  std::map<ProcessId, SmallVector<Tensor>> newvalues;
 
   /// Internal state management counter which counts the number of processes
   /// that contributed already.
@@ -252,6 +257,8 @@ class ProcessGrid {
   RendezvousResult rendezvous(ProcessGroup processGroup, ChannelId channelId,
                               ProcessId processId, const Tensor &operand);
 
+  RendezvousResult newrendezvous(ProcessGroup processGroup, ChannelId channelId,
+                              ProcessId processId, const SmallVector<Tensor> operands);
   /// Sends `inputs` to a channel with `channelId`.
   /// The channel with `channelId` is emptied before the receiving process can
   /// receive values. If there are multiple processes sending data to a
